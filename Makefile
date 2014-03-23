@@ -9,5 +9,6 @@ lint:
 
 install:
 	cp fitsy.js $(JS9JS)
-	cp node_modules/pako/dist/pako_inflate.min.js $(JS9JS)
+	cp decomp/pako_inflate.min.js 	$(JS9JS)
+	cp decomp/bzip2.js 		$(JS9JS)
 
