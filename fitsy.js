@@ -322,17 +322,17 @@ Fitsy.BinTableTemplate = "									\n\
   return function (table, image) {								\n\
     var i, x, y;										\n\
 												\n\
-    var xoff = -((({{table.table.x.max}} - {{table.table.x.min}} + 1)/2{{BinText}}) | 0)	\n\
-    	      + (({{image.nx}}/2) | 0);								\n\
-    var yoff = -((({{table.table.y.max}} - {{table.table.y.min}} + 1)/2{{BinText}}) | 0)  	\n\
-    	      + (({{image.ny}}/2) | 0);								\n\
+    var xoff = ((-( {{table.x.range}}/2 + ({{table.cx}}-{{table.x.range}}/2 )) {{BinText}}) | 0)\n\
+    	     + (( {{image.nx}}/2 ) | 0);							\n\
+    var yoff = ((-( {{table.y.range}}/2 + ({{table.cy}}-{{table.x.range}}/2 )) {{BinText}}) | 0)\n\
+    	     + (( {{image.ny}}/2 ) | 0);							\n\
 												\n\
     for (i = 0; i < table.length; i++) {							\n\
-	x = table.view.get{{table.table.x.type}}(i * {{table.width}} + {{table.table.x.offs}});	\n\
-	y = table.view.get{{table.table.y.type}}(i * {{table.width}} + {{table.table.y.offs}});	\n\
+	x = table.view.get{{table.x.type}}(i * {{table.width}} + {{table.x.offs}});		\n\
+	y = table.view.get{{table.y.type}}(i * {{table.width}} + {{table.y.offs}});		\n\
 												\n\
-	x = (((x - {{table.table.x.min}}) {{BinText}}) | 0) + xoff;				\n\
-	y = (((y - {{table.table.y.min}}) {{BinText}}) | 0) + yoff;				\n\
+	x = (((x - {{table.x.min}}) {{BinText}}) | 0) + xoff;					\n\
+	y = (((y - {{table.y.min}}) {{BinText}}) | 0) + yoff;					\n\
 												\n\
 	if (x >= 0 && x < {{image.nx}} && y >= 0 && y < {{image.ny}}) {				\n\
 	    image.data[y * {{image.width}} + x] += 1;						\n\
@@ -359,8 +359,8 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     var x = hdu.table[options.table.xcol[i]];
     var y = hdu.table[options.table.ycol[i]];
 
-    var table = { table: { x: { type: x.type, offs: x.offs, min: Number(x.min), max: Number(x.max) }
-		         , y: { type: y.type, offs: y.offs, min: Number(y.min), max: Number(y.max) } }
+    var table = { x: { type: x.type, offs: x.offs, min: Number(x.min), range: x.max - x.min + 1 }
+		, y: { type: y.type, offs: y.offs, min: Number(y.min), range: y.max - y.min + 1 } 
     		, cx: options.table.cx, cy: options.table.cy
 		, width: hdu.width, length: hdu.length
 		, view: hdu.view
@@ -371,12 +371,8 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 		, data: hdu.data
     };
 
-    if ( table.cx === undefined ) {
-	table.cx = (table.table.x.max - table.table.x.min + 1) / 2;
-    }
-    if ( table.cy === undefined ) {
-	table.cy = (table.table.y.max - table.table.y.min + 1) / 2;
-    }
+    if ( table.cx === undefined ) { table.cx = (x.max - x.min + 1) / 2; }
+    if ( table.cy === undefined ) { table.cy = (y.max - y.min + 1) / 2; }
 
     if ( options.table.bin === 1 ) {
 	BinText = "";
@@ -384,8 +380,9 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 	BinText = "/" + Number(options.table.bin);
     }
 
-    var key = BinText + "," + table.table.x.type + "," + table.table.x.offs + ","
-	    + table.table.y.type + "," + table.table.y.offs + ","
+    var key = BinText + "," + table.x.type + "," + table.x.offs + ","
+	    + table.y.type + "," + table.y.offs + ","
+	    + table.cx + "," + table.cy
 	    + image.width + "," + image.type;
 
 
@@ -402,8 +399,8 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     hdu.table.bin = options.table.bin;
     hdu.table.nx  = options.table.nx;
     hdu.table.ny  = options.table.ny;
-    hdu.table.cx  = image.nx/2;
-    hdu.table.cy  = image.ny/2;
+    hdu.table.cx  = table.cx;
+    hdu.table.cy  = table.cy;
 
 
     hdu.dmin = Number.MAX_VALUE;

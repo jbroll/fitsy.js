@@ -1,4 +1,20 @@
 
+Fitsy
+ * Images
+ * Event files
+
+ * Decompression
+    * gzip
+    * bzip2
+
+
+
+
+
+
+
+
+
 int itlp2i (double dp, double tlmin, double binsiz, int type)
 {
   if ( (binsiz == 1.0) || (binsiz <= 0.0) ) {
