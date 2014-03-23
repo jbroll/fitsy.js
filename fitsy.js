@@ -4,7 +4,7 @@
        , Uint8Array, Int8Array, Uint16Array, Int16Array, Int32Array, Float32Array, Float64Array, DataView
        , FileReader, Blob
        , typedArrayFunction
-       , pako
+       , pako, LZMA, bzip2
  */
 
 "use strict";
@@ -195,10 +195,8 @@ Fitsy.readHeaderBlock = function(fits) {
 	    return;
 	}
     } else {
-	var ddd = fits.read.result.slice(0, 8);
-
 	if ( hdu.ncard === 0 && fits.read.result.slice(0, 8) !== "XTENSION" ) {
-	    return
+	    return;
 	}
     }
 	

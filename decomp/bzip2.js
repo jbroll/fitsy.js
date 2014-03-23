@@ -235,7 +235,7 @@ bzip2.decompress = function(bits, size, len){
   }
   count = count;
 
-  var maxindex = 1000000;
+  var maxindex = 10000000;
   var output = [];
   var bindex = maxindex + 1;
   var outbuf;
