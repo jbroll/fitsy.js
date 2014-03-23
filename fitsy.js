@@ -142,7 +142,6 @@ Fitsy.readForDeCompress = function(fits) {
 
 	fits.file = new Blob([data]);
     }
-    fits.read = new FileReader();
     fits.read.onloadend = function(){ Fitsy.readHeaderBlock(fits); };
     fits.read.onerror   = function(){ Fitsy.readError(fits); };
     fits.read.readAsBinaryString(Fitsy.getSlice(fits.file, 0, 2880));
@@ -172,6 +171,10 @@ Fitsy.readHeaderBlock = function(fits) {
 	    return;
 	}
     }
+    if ( fits.here === 0 && fits.read.result.slice(0, 6) !== "SIMPLE" ) {
+	return;
+    }
+	
     // Read the block advance the file pointer.
     fits.here += 2880;
     for(off=0; off < 2880; hdu.ncard++, off += 80) {
