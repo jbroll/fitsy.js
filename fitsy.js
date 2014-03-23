@@ -296,8 +296,8 @@ Fitsy.template = function (str, data) {
 Fitsy.BinTableTemplate = "									\n\
   return function (table, image, bin) {								\n\
     var i, x, y;										\n\
-    var xoff = -(table.table.x.max - table.table.x.min + 1) / 2;		\n\
-    var yoff = -(table.table.y.max - table.table.y.min + 1) / 2;		\n\
+    var xoff = -(table.table.x.max - table.table.x.min + 1) / 2;				\n\
+    var yoff = -(table.table.y.max - table.table.y.min + 1) / 2;				\n\
 												\n\
     for (i = 0; i < table.length; i++) {							\n\
 	x = table.view.get{{table.table.x.type}}(i * {{table.width}} + {{table.table.x.offs}});	\n\
