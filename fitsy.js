@@ -19,6 +19,9 @@ Fitsy = {};
 Fitsy.NAME = "Fitsy";		// The name of this namespace
 Fitsy.VERSION = "1.0";		// The version of this namespace
 
+if ( module ) { module.exports = Fitsy; }
+
+
 // there are different versions of slice ... with different syntax
 Fitsy.getSlice = function(file, start, end){
     var blob;
