@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 
+dims="x:1-1024 y:1-2024"
 
 
 EVENTS="
@@ -22,8 +23,8 @@ x	y
 508	508
 507	507"
 
-echo "$EVENTS" | tabletofits | funimage STDIN[1][*,1] STDOUT > cross1.fits
-echo "$EVENTS" | tabletofits | funimage STDIN[1][*,2] STDOUT > cross2.fits
-echo "$EVENTS" | tabletofits | funimage STDIN[1][*,4] STDOUT > cross4.fits
+echo "$EVENTS" | tabletofits $dims | funimage STDIN[1][*,1] STDOUT > cross1.fits
+echo "$EVENTS" | tabletofits $dims | funimage STDIN[1][*,2] STDOUT > cross2.fits
+echo "$EVENTS" | tabletofits $dims | funimage STDIN[1][*,4] STDOUT > cross4.fits
 
 
