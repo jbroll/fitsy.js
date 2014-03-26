@@ -1,7 +1,19 @@
 #!/bin/sh
 #
 
-dims="x:1-1024 y:1-2024"
+echo "\
+	circle	circle(128,128,64)
+	square	box(128,128,64,64)
+	rect	box(128,128,64,32)
+	annuli0	annulus(128,128,0,10,20,30,40,50)
+	annuli1	annulus(128,128,10,20,30,40,50)"	\
+| while read name region ; do
+     < /dev/null fldtotable x y | tabletofits x%B=1:256 y%B=1:256 	\
+    | funimage "stdin[1][$region]" - mask=all 		\
+    | funimage - - bitpix=8						\
+    > data/$name.fits
+
+done
 
 
 EVENTS="
@@ -23,8 +35,20 @@ x	y
 508	508
 507	507"
 
-echo "$EVENTS" | tabletofits $dims | funimage STDIN[1][*,1] STDOUT > cross1.fits
-echo "$EVENTS" | tabletofits $dims | funimage STDIN[1][*,2] STDOUT > cross2.fits
-echo "$EVENTS" | tabletofits $dims | funimage STDIN[1][*,4] STDOUT > cross4.fits
+center=257:768,257:768
 
+echo "\
+	x%I=1:1024 y%I=1:1024		Ii1024	$center
+	x%J=1:1024 y%J=1:1024		Ji1024	$center
+	x%I=1:8192 y%I=1:8192		Ii8192	$center
+	x%J=1:8192 y%J=1:8192		Ji8192	$center
+	x%D=1:8192 y%D=1:8192		Di8192	$center
+	x%E=1:8192 y%E=1:8192		Ei8192	$center
+	x%D=0.5:8192.5 y%D=0.5:8192.5	Dd8192	$center
+	x%E=0.5:8192.5 y%E=0.5:8192.5	Ed8192  $center"	\
+| while read x y ext center; do
+    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,1] STDOUT > data/cross1.$ext.fits
+    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,2] STDOUT > data/cross2.$ext.fits
+    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,4] STDOUT > data/cross4.$ext.fits
+done
 
