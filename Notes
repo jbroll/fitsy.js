@@ -1,13 +1,44 @@
 
 Fitsy
- * Images
- * Event files
+ * FITS Images
+ * FITS Event files
+
+ o Browser Images
 
  * Decompression
     * gzip
     * bzip2
 
+    o Use CharCodeAt() to avoid current call to readForDecompress()?
 
+ * Binning Plugin
+    o Bin images
+    o Choose bin columns
+ 
+ * FITS Explorer
+    o Fix button onclick binding w/grid onclick():
+
+	It's not a good idea to use id for the button because ids must be
+	unique. Instead add a class to your button and subscribe to grid click event.
+	There you can check whether the target of the event has the class you want.
+
+	function reportFormatter(row, cell, value, columnDef, dataContext) {
+	      return "<button class='show-report'>show</button>";
+	}
+	yourGrid.onClick.subscribe(function(e,args) {
+	   if ($(e.target).hasClass('show-report')) {
+		// Your code here
+	   }
+	});
+
+    o Add imageload, imagedisplay callbacks.
+
+    o Display image is grid?
+
+    o Move SlickGrid code and assets to pluging/shared
+
+
+ o Fitsy test page.
 
 
 
