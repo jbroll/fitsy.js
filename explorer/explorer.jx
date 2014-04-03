@@ -1,0 +1,151 @@
+/*jslint white: true, vars: true, plusplus: true, nomen: true, unparam: true */
+/*globals $, JS9 */ 
+
+"use strict";
+
+    require("./SlickGrid/lib/jquery.event.drag-2.2.js");
+    require("./SlickGrid/slick.core.js");
+    require("./SlickGrid/slick.grid.js");
+
+(function() {
+
+    function TableDataView(hdu) {
+	this.hdu = hdu;
+
+	this.getLength = function () { return this.hdu.length; }
+	this.getItem = function (indx) {
+	    var i;
+	    var item = { row: indx };
+
+	    for ( i = 1; i <= hdu.head.TFIELDS; i++ ) {
+		item[hdu.head["TTYPE"+i]] = Fitsy.getTableValue(hdu, indx, hdu.head["TTYPE"+i]);
+	    }
+
+	    return item;
+	}
+    }
+
+
+    function explorerFITS() {
+    }
+
+    function showTable(div, hdu) {
+	div = $(div).find(".grid");
+	var i;
+
+	$(div).empty();
+	
+	var columns = [];
+	columns[0] = { id:"row", name: "row", field: "row" };
+
+	for ( i = 1; i <= hdu.head.TFIELDS; i++ ) {
+	    columns[i] = {id: hdu.head["TTYPE"+i],    name: hdu.head["TTYPE"+i], field: hdu.head["TTYPE"+i] };
+	}
+
+	var options = {
+	    enableCellNavigation: true,
+	    enableColumnReorder: false
+	};
+
+	var data = new TableDataView(hdu);
+	new Slick.Grid(div, data, columns, options);
+    }
+
+    function topLevelTable(div, fits, display) {
+	function formatter(row, cell, value, columnDef, dataContext) {
+	    return "<input type=button value='" + value + "' class=show id='" + row + "')>";
+	}
+
+	var columns = [
+	    {id: "extn",    name: "Title", field: "extn"},
+	    {id: "type",    name: "Type",  field: "type", formatter: formatter },
+	    {id: "naxis",   name: "NAxis", field: "naxis"},
+	    {id: "naxes",   name: "NAxes", field: "naxes"},
+	];
+	var options = {
+	    enableCellNavigation: true,
+	    enableColumnReorder: false
+	 };
+
+	var data = [];
+	var hdu, axes, sep, i, j;
+
+	for ( i = 0; i < fits.hdu.length; i++) {
+	    hdu = fits.hdu[i];
+
+	    axes = ""
+	    sep  = ""
+	    for ( j = 1; j <= hdu.head.NAXIS; j++ ) {
+		axes += sep + hdu.head["NAXIS"+j]
+		sep = " x ";
+	    }
+
+	    data[i] = {
+		extn: i === 0 ? "Primary" : hdu.head.EXTNAME,
+		type: hdu.table === undefined ? "Image" : "Table",
+		naxis: hdu.naxis,
+		naxes:      axes,
+	    };
+	}
+	var grid = new Slick.Grid($(div).find(".grid"), data, columns, options);
+
+	$(div).find(".show").on("click", function () {
+	    var row = parseInt($(this).attr("id"));
+	    var hdu = fits.hdu[row];
+
+	    if ( hdu.table ) {
+		if ( hdu.view ) {
+		    showTable(div, hdu);
+		} else {
+		    Fitsy.readTableHDUData(fits, hdu, { nobinning: true }, function () {
+			showTable(div, hdu);
+		    });
+		}
+	    } else {
+		if ( hdu.data ) {
+		    JS9.Load(hdu, { display: display });
+		} else {
+		    Fitsy.readImageHDUData(fits, hdu, Fitsy.options, Fitsy.handler);
+		}
+	    }
+	});
+    }
+
+    function explorerInit() {
+	var i;
+	var div = this.div;
+
+	div.innerHTML = '<form class="JS9Explorer">		  		  \
+		<input type=button value="FITS HDU\'s" class=top>: <span class="name"></span>	\n\
+		<div class="grid" style="width:600px;height:475px;"></div>	\n\
+	';
+
+
+	$(div).height("100%");
+
+	var display = this.display;
+	var im      = JS9.GetImage(display);
+	var fits    = im.raw.hdu.fits, hdu, type;
+
+	if ( im.raw.hdu ) {
+	    $(div).find(".top").on("click", function () {
+		    topLevelTable(div, fits, display);
+	    });
+
+	    topLevelTable(div, fits, display);
+	}
+    }
+
+    JS9.RegisterPlugin("JS9", "FITS Explorer", explorerInit, {
+
+	    menu:     "view",
+
+	    menuItem: "FITS Explorer",
+	    winTitle: "FITS Explorer",
+	    winDims: [610, 500],
+
+	    help:	"fitsy/explorer.html"
+    });
+
+}());
+

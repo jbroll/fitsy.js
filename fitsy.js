@@ -19,8 +19,6 @@ Fitsy = {};
 Fitsy.NAME = "Fitsy";		// The name of this namespace
 Fitsy.VERSION = "1.0";		// The version of this namespace
 
-if ( module ) { module.exports = Fitsy; }
-
 
 // there are different versions of slice ... with different syntax
 Fitsy.getSlice = function(file, start, end){
@@ -350,6 +348,11 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 
     hdu.tabl = fits.read.result;
     hdu.view = new DataView(hdu.tabl);
+
+    if ( options.nobinning ) {
+	handler(hdu, options);
+	return;
+    }
     hdu.data = new Int32Array(options.table.nx*options.table.ny);
 
     for ( i = 0; i < options.table.xcol.length; i++ ) { 			// Choose an X axis column
@@ -397,7 +400,9 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 
 	Fitsy.binner[key] = new Function(text)();
     }
-    Fitsy.binner[key](table, image, options.table.bin);
+    var binner = Fitsy.binner[key];
+
+    binner(table, image, options.table.bin);
 
     hdu.table.bin = options.table.bin;
     hdu.table.nx  = options.table.nx;
@@ -417,7 +422,7 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     hdu.axis[1] = image.nx;
     hdu.axis[2] = image.ny;
 
-    handler(hdu);
+    handler(hdu, options);
 };
 
 Fitsy.readTableHDUData = function (fits, hdu, options, handler) {
@@ -449,6 +454,16 @@ Fitsy.convertPixel = function (data, bitpix, zero) {
 
     return undefined;
 };
+
+Fitsy.getTableValue = function (hdu, row, col) {
+    var column = hdu.table[col];
+
+    if ( hdu.view["get" + column.type] !== undefined ) {
+	return hdu.view["get" + column.type](row * hdu.width + column.offs)
+    }
+
+    return "";
+}
 
 Fitsy.readPixel = function (fits, hdu, index, handler) {
     var ptr;
