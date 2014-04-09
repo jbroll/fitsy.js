@@ -2,16 +2,34 @@
 #
 
 echo "\
-	circle	circle(128,128,64)
-	square	box(128,128,64,64)
-	rect	box(128,128,64,32)
+	circle128	circle(128,128,128)
+	circle64	circle(128,128,64)
+	circle32	circle(128,128,32)
+	circle16	circle(128,128,16)
+	circle8		circle(128,128,8)
+	square		box(128,128,64,64)
+	square45	box(128,128,64,64,45)
+	square225	box(128,128,64,64,22.5)
+	rect		box(128,128,64,32)
+	rect45		box(128,128,64,32,45)
+	rect225		box(128,128,64,32,22.5)
+	ellipse128-64	ellipse(128,128,128,64)
+	ellipse64-128	ellipse(128,128,64,128)
+	ellipse64-12+45	ellipse(128,128,64,128,45)
+	ellipse32-64+45	ellipse(128,128,32,64,45)
+	ellipse16-64+45	ellipse(128,128,16,64,45)
+	ellipse64-12-45	ellipse(128,128,64,128,-45)
+	ellipse32-64-45	ellipse(128,128,32,64,-45)
+	ellipse16-64-45	ellipse(128,128,16,64,-45)
 	annuli0	annulus(128,128,0,10,20,30,40,50)
-	annuli1	annulus(128,128,10,20,30,40,50)"	\
+	annuli1	annulus(128,128,10,20,30,40,50)"			\
 | while read name region ; do
      < /dev/null fldtotable x y | tabletofits x%B=1:256 y%B=1:256 	\
-    | funimage "stdin[1][$region]" - mask=all 		\
+    | funimage "stdin[1][$region]" - mask=all 				\
     | funimage - - bitpix=8						\
     > data/$name.fits
+
+    echo "REGN001 $region" | funhead data/$name.fits - - | overwrite data/$name.fits
 
 done
 

@@ -15,3 +15,8 @@ install:
 	cp decomp/pako_inflate.min.js 	$(JS9JS)
 	cp decomp/bzip2.js 		$(JS9JS)
 
+test: FORCE
+	NODE_PATH=/home/john/lib/node_modules nodeunit fitsy-test.js
+
+FORCE:
+

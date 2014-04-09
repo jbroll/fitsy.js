@@ -1,0 +1,172 @@
+<html>
+    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=Edge;chrome=1" > 
+      <link rel="shortcut icon" type="image/x-icon" href="./favicon.ico">
+      <link type="text/css" rel="stylesheet" href="css/jquery.contextMenu.css">
+      <link rel="stylesheet" href="css/dhtmlwindow.css" type="text/css">
+      <link type="text/css" rel="stylesheet" href="js9.css">
+      <script type="text/javascript" src="js/jquery.min.js"></script>
+      <script type="text/javascript" src="js/kinetic.min.js"></script>
+      <script type="text/javascript" src="js/jquery.contextMenu.min.js"></script>
+      <script type="text/javascript" src="js/jquery.flot.min.js"></script>
+      <script type="text/javascript" src="js/jquery.flot.errorbars.min.js"></script>
+      <script type="text/javascript" src="js/sprintf.min.js"></script>
+      <script type="text/javascript" src="js/dhtmlwindow.min.js">	
+      /***********************************************
+      * DHTML Window Widget- © Dynamic Drive (www.dynamicdrive.com)
+      * This notice must stay intact for legal use.
+      * Visit http://www.dynamicdrive.com/ for full source code
+      ***********************************************/
+      </script>
+
+      <script type="text/javascript" src="js/fitsy.js"></script>
+      <script type="text/javascript" src="js/pako_inflate.min.js"></script>
+      <script type="text/javascript" src="js/bzip2.js"></script>
+      <script type="text/javascript" src="js/lzma_worker.js"></script>
+      <script type="text/javascript" src="js/astrolib.js"></script>
+
+      <script type="text/javascript" src="js9.js"></script>
+
+
+      <script type="text/javascript" src="plugins/imexam/imexam.js"></script>
+      <script type="text/javascript" src="plugins/imexam/rgstat.js"></script>
+      <script type="text/javascript" src="plugins/imexam/xyproj.js"></script>
+      <script type="text/javascript" src="plugins/imexam/r_proj.js"></script>
+      <script type="text/javascript" src="plugins/imexam/enener.js"></script>
+      <script type="text/javascript" src="plugins/imexam/rghist.js"></script>
+      <script type="text/javascript" src="plugins/imexam/3dplot.js"></script>
+      <script type="text/javascript" src="plugins/imexam/pxtabl.js"></script>
+      <script type="text/javascript" src="plugins/imexam/rghxrg.js"></script>
+
+      <script type="text/javascript" src="plugins/imexam/contour.js"></script>
+      <script type="text/javascript" src="plugins/imexam/imcnts.js"></script>
+
+      <script type="text/javascript" src="plugins/imexam/binning.js"></script>
+
+      <script>
+
+        JS9.HEIGHT    = 256;
+        JS9.WIDTH     = 256;
+        JS9.MENUWIDTH = JS9.WIDTH;
+
+	var nMaskTests = 1;
+
+	var imexam = require("./imexam");
+	var   mask = imexam.ndops.mask;
+
+        var draw = {}
+        draw.circle  = function(x, y, r)       { JS9.Regions(this, { shape: "circle",  x: x, y: y, radius: r }); }
+        draw.box     = function(x, y, w, h, r) { JS9.Regions(this, { shape: "box",     x: x, y: y, width: w, height: h, angle: r }); }
+        draw.ellipse = function(x, y, w, h, r) { JS9.Regions(this, { shape: "ellipse", x: x, y: y, eradius: { x: w, y: h }, angle: r}); }
+        draw.annulus = function(x, y)          {
+	    JS9.Regions(this, { shape: "annulus", x: x, y: y, radii: Array.prototype.slice.call(arguments,2) });
+	}
+
+ 	function maskTest(file) {
+		var n = nMaskTests++;
+
+
+	    $("body").append('<div><b>' + file + '</b>								\
+	     <table>												\
+		<tr><td><div class="JS9Menubar"		id="maskImag' + n + 'Menubar"></div>			\
+			<div class="JS9" 	        id="maskImag' + n + '" style="width=256; height=256;"></div></td>	\
+		    <td><div class="JS9Menubar" 	id="maskMask' + n + 'Menubar"></div>			\
+			<div class="JS9" 		id="maskMask' + n + '" style="width=256; height=256;"></div></td>	\
+		    <td><div class="JS9Menubar" 	id="maskDiff' + n + 'Menubar"></div>			\
+			<div class="JS9" 		id="maskDiff' + n + '" style="width=256; height=256;"></div></td>	\
+		</tr>												\
+	     </table>												\
+	     </div>');
+
+	    JS9.displays.push(new JS9.Display("maskImag" + n));
+	    JS9.displays.push(new JS9.Display("maskMask" + n));
+	    JS9.displays.push(new JS9.Display("maskDiff" + n));
+
+	    JS9.instantiatePlugin($("#" + "maskImag" + n + "Menubar"), "JS9Menubar", "div");
+	    JS9.instantiatePlugin($("#" + "maskMask" + n + "Menubar"), "JS9Menubar", "div");
+	    JS9.instantiatePlugin($("#" + "maskDiff" + n + "Menubar"), "JS9Menubar", "div");
+ 
+	    name = file.split("/");
+
+	    Fitsy.fetchURL(name[name.length-1], file, { display: "maskImag" + n }, function(hdu, options) {
+	        JS9.Load(hdu, options);
+
+		var im = JS9.GetImage("maskImag" + n);
+
+
+	        var regn = hdu.head.REGN001.replace(/[,()]/g, " ").split(" ");
+
+	        draw[regn[0]].apply(im, regn.slice(1));
+
+		var data = imexam.ndops.ndarray(im.raw.data, [im.raw.height, im.raw.width]);
+		var regs = JS9.Regions(im);
+		var mimg = imexam.ndops.zeros(data.shape, Int32Array);
+
+		var list = mask.listRegions(regs);
+			   mask.drawRegions(list, mimg);
+
+		
+		var image = { filename: "Mask", bitpix: 32, naxis: 2
+				, axis: { 1: mimg.shape[0], 2: mimg.shape[1] } 
+				, dmin: 0, dmax: list.length
+				, head: {}, data: mimg.data
+			    };
+		JS9.Load(image, { display: "maskMask" + n });
+
+
+		var diff = imexam.ndops.zeros(data.shape, Int32Array);
+		imexam.ndops.sub(diff, data, mimg);
+
+		var image = { filename: "Mask", bitpix: 32, naxis: 2
+				, axis: { 1: diff.shape[0], 2: diff.shape[1] } 
+				, dmin: -list.length, dmax: list.length
+				, head: {}, data: diff.data
+			    };
+		JS9.Load(image, { display: "maskDiff" + n });
+
+	    });
+       }
+
+       $(document).ready(function() {
+
+	       maskTest("data/maskTest/circle128.fits");
+	       maskTest("data/maskTest/circle64.fits");
+	       maskTest("data/maskTest/circle32.fits");
+	       maskTest("data/maskTest/circle16.fits");
+	       maskTest("data/maskTest/circle8.fits");
+
+	       maskTest("data/maskTest/square.fits");
+	       maskTest("data/maskTest/square45.fits");
+	       maskTest("data/maskTest/square225.fits");
+
+	       maskTest("data/maskTest/rect.fits");
+	       maskTest("data/maskTest/rect45.fits");
+	       maskTest("data/maskTest/rect225.fits");
+
+	       maskTest("data/maskTest/annuli0.fits");
+	       maskTest("data/maskTest/annuli1.fits");
+
+	       maskTest("data/maskTest/ellipse128-64.fits");
+	       maskTest("data/maskTest/ellipse64-128.fits");
+
+	       maskTest("data/maskTest/ellipse64-12+45.fits");
+	       maskTest("data/maskTest/ellipse32-64+45.fits");
+	       maskTest("data/maskTest/ellipse16-64+45.fits");
+	       maskTest("data/maskTest/ellipse64-12-45.fits");
+	       maskTest("data/maskTest/ellipse32-64-45.fits");
+	       maskTest("data/maskTest/ellipse16-64-45.fits");
+	   });
+
+      </script>
+      	
+
+    </head>
+    <body>
+    <font size="+1"><center>
+    <b>JS9 Mask Test:</b>
+    </center></font>
+    <p>
+
+    </body>
+</html>
