@@ -33,12 +33,13 @@ Fitsy
 
     o Add imageload, imagedisplay callbacks.
 
-    o Display image is grid?
+    o Display image as grid?
 
     o Move SlickGrid code and assets to pluging/shared
 
 
- o Fitsy test page.
+ * Fitsy test page.
+    o Written needs review when Eric completes Fabric port.
 
 
 
