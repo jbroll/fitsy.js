@@ -1,6 +1,52 @@
 #!/bin/sh
 #
 
+EVENTS="
+
+EXTNAME	EVENTS
+
+x	y
+-	-
+512	511
+512	512
+512	513
+512	514
+512	515
+511	512
+512	512
+513	512
+514	512
+515	512
+511	511
+510	510
+509	509
+508	508
+507	507"
+
+center=257:768,257:768
+
+echo "\
+	x%I=1:1024 y%I=1:1024		Ii1024	$center
+	x%J=1:1024 y%J=1:1024		Ji1024	$center
+	x%I=1:8192 y%I=1:8192		Ii8192	$center
+	x%J=1:8192 y%J=1:8192		Ji8192	$center
+	x%D=1:8192 y%D=1:8192		Di8192	$center
+	x%E=1:8192 y%E=1:8192		Ei8192	$center
+	x%D=0.5:8192.5 y%D=0.5:8192.5	Dd8192	$center
+	x%E=0.5:8192.5 y%E=0.5:8192.5	Ed8192  $center"	\
+| while read x y ext center; do
+    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,1] STDOUT > data/cross1.$ext.fits
+    echo "BINNED $center,1"    | funhead data/cross1.$ext.fits - - | overwrite data/cross1.$ext.fits
+    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,2] STDOUT > data/cross2.$ext.fits
+    echo "BINNED $center,2"    | funhead data/cross2.$ext.fits - - | overwrite data/cross2.$ext.fits
+    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,4] STDOUT > data/cross4.$ext.fits
+    echo "BINNED $center,4"    | funhead data/cross4.$ext.fits - - | overwrite data/cross4.$ext.fits
+done
+
+echo "$EVENTS" | tabletofits $x $y > data/events.fits
+
+exit
+
 echo "\
 	circle128	circle(128,128,128)
 	circle64	circle(128,128,64)
@@ -34,39 +80,4 @@ echo "\
 done
 
 
-EVENTS="
-x	y
--	-
-512	511
-512	512
-512	513
-512	514
-512	515
-511	512
-512	512
-513	512
-514	512
-515	512
-511	511
-510	510
-509	509
-508	508
-507	507"
-
-center=257:768,257:768
-
-echo "\
-	x%I=1:1024 y%I=1:1024		Ii1024	$center
-	x%J=1:1024 y%J=1:1024		Ji1024	$center
-	x%I=1:8192 y%I=1:8192		Ii8192	$center
-	x%J=1:8192 y%J=1:8192		Ji8192	$center
-	x%D=1:8192 y%D=1:8192		Di8192	$center
-	x%E=1:8192 y%E=1:8192		Ei8192	$center
-	x%D=0.5:8192.5 y%D=0.5:8192.5	Dd8192	$center
-	x%E=0.5:8192.5 y%E=0.5:8192.5	Ed8192  $center"	\
-| while read x y ext center; do
-    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,1] STDOUT > data/cross1.$ext.fits
-    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,2] STDOUT > data/cross2.$ext.fits
-    echo "$EVENTS" | tabletofits $x $y | funimage STDIN[1][$center,4] STDOUT > data/cross4.$ext.fits
-done
 
