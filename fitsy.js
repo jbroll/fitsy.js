@@ -141,7 +141,7 @@ Fitsy.readForDeCompress = function(fits) {
 
     var data = new Uint8Array(fits.read.result);
 
-    if ( data[0] === 0xfd && data[1] === 0x37 && data[2] === 0x7a && data[3] === 0x58 ) {
+    if ( data[0] === 0xfd && data[1] === 0x37 && data[2] === 0x7a && data[3] === 0x58 ) {	// lzip
 
 	LZMA.decompress(data, function(result) {
 	    fits.file = new Blob([result]);
@@ -153,11 +153,11 @@ Fitsy.readForDeCompress = function(fits) {
 
 	return;
     }
-    if ( data[0] === 0x42 && data[1] === 0x5A ) {
+    if ( data[0] === 0x42 && data[1] === 0x5A ) {						// bzip2
 	data = bzip2.simple(bzip2.array(data));
 	fits.file = new Blob(data);
     }
-    if ( data[0] === 0x1f && data[1] === 0x8B ) {
+    if ( data[0] === 0x1f && data[1] === 0x8B ) {						// gzip
 	data = pako.inflate(data);
 	fits.file = new Blob([data]);
     }
