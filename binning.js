@@ -83,9 +83,9 @@
 	    toolbarSeparate: true,
 	    toolbarHTML: " ",
 
-	    imageload:    getBinParams,
-	    imagedisplay: getBinParams,
+	    onimageload:    getBinParams,
+	    onimagedisplay: getBinParams,
 
-            winDims: [350, 100],
+            winDims: [350, 125],
     });
 }());

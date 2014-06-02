@@ -501,19 +501,12 @@ Fitsy.defaultDispatchFITS = function (fits, options, handler) { 	// Function to 
     }
 };
 
-Fitsy.defaultHandleFITSFiles = function(files, options, handler) {	// Read the headers.
-    var i;
+Fitsy.handleFITSFile = function(file, options, handler) {	// Read the headers.
 
     if ( options === undefined ) { options = Fitsy.options; }
     if ( handler === undefined ) { handler = Fitsy.handler; }
 
-    var func = function (fits) {
-	Fitsy.defaultDispatchFITS(fits, options, handler);
-    };
-
-    for ( i = 0; i < files.length; i++ ) {
-	Fitsy.fitsopen(files[i], func);
-    }
+    Fitsy.fitsopen(file, function (fits) { Fitsy.defaultDispatchFITS(fits, options, handler); });
 };
 
 
@@ -527,8 +520,23 @@ Fitsy.dragover  = function(id, e) { e.stopPropagation(); e.preventDefault(); };
 Fitsy.dragexit  = function(id, e) { e.stopPropagation(); e.preventDefault(); };
 Fitsy.dragdrop  = function(id, e) { e.stopPropagation(); e.preventDefault();
 
-    Fitsy.defaultHandleFITSFiles(e.target.files || e.dataTransfer.files);
+    //Fitsy.defaultHandleFITSFiles(e.target.files || e.dataTransfer.files);
+    Fitsy.onFile(e.target.files || e.dataTransfer.files);
 };
+
+
+Fitsy.onFile = function(files, options, handler) {
+    var i, extn;
+
+    for ( i = 0; i < files.length; i++ ) {
+	if ( files[i].type.indexOf("image") != -1 ) {
+	    Fitsy.handleImageFile(files[i], options, handler);
+	} else {
+	    Fitsy.handleFITSFile(files[i], options, handler);
+	}
+    }
+}
+
 
 
 Fitsy.options = {
@@ -554,7 +562,7 @@ Fitsy.fetchURL = function(name, url, options, handler) {
 
 		if ( options.messages ) { options.messages(""); }
 
-		Fitsy.defaultHandleFITSFiles([blob], options, handler);
+		Fitsy.onFile([blob], options, handler);
 	    }
 	}
     };
@@ -566,3 +574,53 @@ Fitsy.fetchURL = function(name, url, options, handler) {
     xhr.send();
 };
 
+Fitsy.handleImageFile = function (file, options, handler) {
+    if ( options === undefined ) { options = Fitsy.options; }
+    if ( handler === undefined ) { handler = Fitsy.handler; }
+
+    var reader = new FileReader();
+    reader.onload = function ( ev ) {
+	var img = new Image();
+	img.src = ev.target.result;
+	img.onload = function() {
+	    var x, y, i = 0, brightness;
+
+	    var canvas = document.createElement('canvas');
+	    var ctx    = canvas.getContext('2d');
+	    var h      = img.height;
+	    var w      = img.width;
+
+	    canvas.width  = w;
+	    canvas.height = h;
+
+	    ctx.drawImage(img, 0, 0);
+
+	    var data   = ctx.getImageData(0, 0, w, h).data;
+	    var gray   = new Float32Array(h*w);
+
+	    for ( y = 0; y < h; y++ ) {
+		for ( x = 0; x < w; x++ ) {
+		      brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];		// NTSC
+		    //brightness = 0.212 * data[i] + 0.715 * data[i + 1] + 0.073 * data[i + 2];		// "Modern"
+
+		    gray[(h-y)*w+x] = brightness; 
+		    i += 4;
+		}
+	    }
+
+	    var hdu = { head: {}, name: file.name
+		      , data: gray, naxis: 2, axis: [0, w, h], bitpix: -32 };
+
+	    hdu.dmin = Number.MAX_VALUE;
+	    hdu.dmax = Number.MIN_VALUE;
+
+	    for ( i = 0; i < h*w; i++ ) {
+		hdu.dmin    = Math.min(hdu.dmin, hdu.data[i]);
+		hdu.dmax    = Math.max(hdu.dmax, hdu.data[i]);
+	    }
+
+	    handler(hdu, options);
+	};
+    }
+    reader.readAsDataURL(file);
+}
