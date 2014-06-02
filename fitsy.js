@@ -529,7 +529,7 @@ Fitsy.onFile = function(files, options, handler) {
     var i, extn;
 
     for ( i = 0; i < files.length; i++ ) {
-	if ( files[i].type.indexOf("image") != -1 ) {
+	if ( files[i].type !== "image/fits" && files[i].type.indexOf("image/") !== -1 ) {
 	    Fitsy.handleImageFile(files[i], options, handler);
 	} else {
 	    Fitsy.handleFITSFile(files[i], options, handler);
