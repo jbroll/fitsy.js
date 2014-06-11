@@ -521,7 +521,7 @@ Fitsy.dragexit  = function(id, e) { e.stopPropagation(); e.preventDefault(); };
 Fitsy.dragdrop  = function(id, e) { e.stopPropagation(); e.preventDefault();
 
     //Fitsy.defaultHandleFITSFiles(e.target.files || e.dataTransfer.files);
-    Fitsy.onFile(e.target.files || e.dataTransfer.files);
+    Fitsy.onFile(e.target.files || e.dataTransfer.files, { display: id });
 };
 
 
