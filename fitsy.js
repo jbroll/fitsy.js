@@ -162,6 +162,8 @@ Fitsy.readForDeCompress = function(fits) {
 	fits.file = new Blob([data]);
     }
 
+    fits.size = fits.file.size;
+
     fits.read.onloadend = function(){ Fitsy.readHeaderBlock(fits); };
     fits.read.onerror   = function(){ Fitsy.readError(fits); };
     fits.read.readAsBinaryString(Fitsy.getSlice(fits.file, 0, 2880));
@@ -343,11 +345,16 @@ Fitsy.BinTableTemplate = "									\n\
 
 Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     var i, BinText;
+    var opttable = options.table || Fitsy.options.table;;
 
     hdu.filename = fits.name;
 
     hdu.tabl = fits.read.result;
     hdu.view = new DataView(hdu.tabl);
+
+    if ( options.table === undefined ) {
+	options.table = Fitsy.options.table;
+    }
 
     if ( options.nobinning ) {
 	handler(hdu, options);
@@ -355,26 +362,26 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     }
     hdu.data = new Int32Array(options.table.nx*options.table.ny);
 
-    for ( i = 0; i < options.table.xcol.length; i++ ) { 			// Choose an X axis column
-	if ( hdu.table[options.table.xcol[i]] !== undefined ) { break; }
+    for ( i = 0; i < opttable.xcol.length; i++ ) { 			// Choose an X axis column
+	if ( hdu.table[opttable.xcol[i]] !== undefined ) { break; }
     }
-    for ( i = 0; i < options.table.ycol.length; i++ ) {				// Choose a  Y axis column
-	if ( hdu.table[options.table.ycol[i]] !== undefined ) { break; }
+    for ( i = 0; i < opttable.ycol.length; i++ ) {				// Choose a  Y axis column
+	if ( hdu.table[opttable.ycol[i]] !== undefined ) { break; }
     }
 
-    var x = hdu.table[options.table.xcol[i]];
-    var y = hdu.table[options.table.ycol[i]];
+    var x = hdu.table[opttable.xcol[i]];
+    var y = hdu.table[opttable.ycol[i]];
 
-    var table = { x: { type: x.type, offs: x.offs, min: Number(x.min), range: x.max - x.min + 1 }
+    var image = { nx: opttable.nx, ny: opttable.ny
+		, width: opttable.nx
+		, data: hdu.data
+    };
+
+    var table = {     x: { type: x.type, offs: x.offs, min: Number(x.min), range: x.max - x.min + 1 }
 		, y: { type: y.type, offs: y.offs, min: Number(y.min), range: y.max - y.min + 1 } 
     		, cx: options.table.cx, cy: options.table.cy
 		, width: hdu.width, length: hdu.length
 		, view: hdu.view
-    };
-
-    var image = { nx: options.table.nx, ny: options.table.ny
-		, width: options.table.nx
-		, data: hdu.data
     };
 
     if ( table.cx === undefined ) { table.cx = (x.max - x.min + 1) / 2; }
@@ -383,30 +390,41 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     if ( options.table.bin === 1 ) {
 	BinText = "";
     } else {
-	BinText = "/" + Number(options.table.bin);
+	BinText = "/" + Number(opttable.bin);
     }
 
-    var key = BinText + "," + table.x.type + "," + table.x.offs + ","
-	    + table.y.type + "," + table.y.offs + ","
-	    + table.cx + "," + table.cy
-	    + image.width + "," + image.type;
+    var cache = false;
+
+    if ( cache ) {
+	var key = BinText + "," + table.x.type + "," + table.x.offs + ","
+		+ table.y.type + "," + table.y.offs + ","
+		+ table.cx + "," + table.cy
+		+ image.width + "," + image.type;
 
 
-    if ( Fitsy.binner      === undefined ) { Fitsy.binner = {}; }
-    if ( Fitsy.binner[key] === undefined ) {
+	if ( Fitsy.binner      === undefined ) { Fitsy.binner = {}; }
+	if ( Fitsy.binner[key] === undefined ) {
+	    var values = { table: table, image: image, BinText: BinText };
+	    var text = Fitsy.template(Fitsy.BinTableTemplate, values);
+	    console.log(text);
+
+	    Fitsy.binner[key] = new Function(text)();
+	}
+
+	var binner = Fitsy.binner[key];
+    } else {
 	var values = { table: table, image: image, BinText: BinText };
 	var text = Fitsy.template(Fitsy.BinTableTemplate, values);
 	console.log(text);
 
-	Fitsy.binner[key] = new Function(text)();
+	binner = new Function(text)();
     }
-    var binner = Fitsy.binner[key];
 
-    binner(table, image, options.table.bin);
+    binner(table, image, opttable.bin);
 
-    hdu.table.bin = options.table.bin;
-    hdu.table.nx  = options.table.nx;
-    hdu.table.ny  = options.table.ny;
+    hdu.table.bin = opttable.bin;
+    hdu.table.nx  = opttable.nx;
+    hdu.table.ny  = opttable.ny;
     hdu.table.cx  = table.cx;
     hdu.table.cy  = table.cy;
 
@@ -520,7 +538,6 @@ Fitsy.dragover  = function(id, e) { e.stopPropagation(); e.preventDefault(); };
 Fitsy.dragexit  = function(id, e) { e.stopPropagation(); e.preventDefault(); };
 Fitsy.dragdrop  = function(id, e) { e.stopPropagation(); e.preventDefault();
 
-    //Fitsy.defaultHandleFITSFiles(e.target.files || e.dataTransfer.files);
     Fitsy.onFile(e.target.files || e.dataTransfer.files, { display: id });
 };
 
@@ -548,6 +565,10 @@ Fitsy.options = {
 Fitsy.fetchURL = function(name, url, options, handler) {
     var xhr = new XMLHttpRequest();
 
+    if ( url === undefined ) {
+	url  = name;
+	name = /([^\\/]+)$/.exec(url)[1]
+    }
     options = options || Fitsy.options;
 
     xhr.open('GET', url, true);
