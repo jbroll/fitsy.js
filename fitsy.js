@@ -393,32 +393,11 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 	BinText = "/" + Number(opttable.bin);
     }
 
-    var cache = false;
+    var values = { table: table, image: image, BinText: BinText };
+    var text = Fitsy.template(Fitsy.BinTableTemplate, values);
+    //console.log(text);
 
-    if ( cache ) {
-	var key = BinText + "," + table.x.type + "," + table.x.offs + ","
-		+ table.y.type + "," + table.y.offs + ","
-		+ table.cx + "," + table.cy
-		+ image.width + "," + image.type;
-
-
-	if ( Fitsy.binner      === undefined ) { Fitsy.binner = {}; }
-	if ( Fitsy.binner[key] === undefined ) {
-	    var values = { table: table, image: image, BinText: BinText };
-	    var text = Fitsy.template(Fitsy.BinTableTemplate, values);
-	    console.log(text);
-
-	    Fitsy.binner[key] = new Function(text)();
-	}
-
-	var binner = Fitsy.binner[key];
-    } else {
-	var values = { table: table, image: image, BinText: BinText };
-	var text = Fitsy.template(Fitsy.BinTableTemplate, values);
-	console.log(text);
-
-	binner = new Function(text)();
-    }
+    binner = new Function(text)();
 
     binner(table, image, opttable.bin);
 
