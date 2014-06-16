@@ -397,7 +397,7 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     var text = Fitsy.template(Fitsy.BinTableTemplate, values);
     //console.log(text);
 
-    binner = new Function(text)();
+    var binner = new Function(text)();
 
     binner(table, image, opttable.bin);
 
