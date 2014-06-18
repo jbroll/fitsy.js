@@ -22,7 +22,7 @@
 	var hdu = im.raw.hdu;
 
 	Fitsy.readTableHDUData(hdu.fits, hdu, options, function (hdu) {
-	    JS9.Load(hdu, { display: display });
+	    JS9.RefreshImage(display, hdu);
 	});
     }
 
@@ -81,7 +81,6 @@
             menuItem: "Binning",
 
 	    toolbarSeparate: true,
-	    toolbarHTML: " ",
 
 	    onimageload:    getBinParams,
 	    onimagedisplay: getBinParams,
