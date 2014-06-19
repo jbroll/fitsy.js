@@ -53,7 +53,7 @@
 	    <table><tr>	<td>Bin Factor</td>								\
 			<td><input type=text name=bin value=1 size=10 style="text-align:right;"></td>				\
 			<td></td>									\
-		       	<td><input type=button value="ReBin Image" class="rebin-image"></td></tr>	\
+		       	<td><input type=button value="Rebin Image" class="rebin-image"></td></tr>	\
 	           <tr>	<td>Center</td>									\
 			<td><input type=text name=cx size=10 style="text-align:right;"></td>					\
 			<td><input type=text name=cy size=10 style="text-align:right;"></td></tr>					\
