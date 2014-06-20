@@ -2,7 +2,7 @@
 /*jshint node: true, -W099: true, laxbreak:true, laxcomma:true, multistr:true, smarttabs:true */
 /*global alert, XMLHttpRequest
        , Uint8Array, Int8Array, Uint16Array, Int16Array, Int32Array, Float32Array, Float64Array, DataView
-       , FileReader, Blob
+       , FileReader, Blob, Image, document
        , typedArrayFunction
        , pako, LZMA, bzip2
  */
@@ -345,7 +345,7 @@ Fitsy.BinTableTemplate = "									\n\
 
 Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     var i, BinText;
-    var opttable = options.table || Fitsy.options.table;;
+    var opttable = options.table || Fitsy.options.table;
 
     hdu.filename = fits.name;
 
@@ -456,11 +456,11 @@ Fitsy.getTableValue = function (hdu, row, col) {
     var column = hdu.table[col];
 
     if ( hdu.view["get" + column.type] !== undefined ) {
-	return hdu.view["get" + column.type](row * hdu.width + column.offs)
+	return hdu.view["get" + column.type](row * hdu.width + column.offs);
     }
 
     return "";
-}
+};
 
 Fitsy.readPixel = function (fits, hdu, index, handler) {
     var ptr;
@@ -522,7 +522,7 @@ Fitsy.dragdrop  = function(id, e) { e.stopPropagation(); e.preventDefault();
 
 
 Fitsy.onFile = function(files, options, handler) {
-    var i, extn;
+    var i;
 
     for ( i = 0; i < files.length; i++ ) {
 	if ( files[i].type !== "image/fits" && files[i].type.indexOf("image/") !== -1 ) {
@@ -531,7 +531,7 @@ Fitsy.onFile = function(files, options, handler) {
 	    Fitsy.handleFITSFile(files[i], options, handler);
 	}
     }
-}
+};
 
 
 
@@ -546,7 +546,7 @@ Fitsy.fetchURL = function(name, url, options, handler) {
 
     if ( url === undefined ) {
 	url  = name;
-	name = /([^\\/]+)$/.exec(url)[1]
+	name = /([^\\\/]+)$/.exec(url)[1];
     }
     options = options || Fitsy.options;
 
@@ -621,6 +621,7 @@ Fitsy.handleImageFile = function (file, options, handler) {
 
 	    handler(hdu, options);
 	};
-    }
+    };
     reader.readAsDataURL(file);
-}
+};
+

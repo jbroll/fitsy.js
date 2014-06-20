@@ -7,7 +7,10 @@
 (function() {
 
     function reBinImage(div, display) {
-	var i;
+
+    JS9.debug = 2;
+
+	var i, j;
 	var im   = JS9.GetImage(display);
 	var form = $(div).find(".binning-form")[0];
 
@@ -21,9 +24,48 @@
 
 	var hdu = im.raw.hdu;
 
-	Fitsy.readTableHDUData(hdu.fits, hdu, options, function (hdu) {
+	if ( hdu.head.SIMPLE || hdu.head.XTENSION === "IMAGE" ) {
+	    if ( hdu.unbinned === undefined ) {
+	    	hdu.unbinned = hdu.data;
+	    }
+
+	    var bin = Math.round(Number(form.bin.value));
+	    hdu.bin        = bin;
+	    form.bin.value = bin;
+
+
+	    var nx = hdu.head["NAXIS1"]
+	    var ny = hdu.head["NAXIS2"]
+
+	    var xx = Math.round(nx/bin);
+	    var yy = Math.round(nx/bin);
+
+	    hdu.data = new Float32Array(nx*ny);
+
+	    for ( j = 0; j < ny; j++ ) {
+	    for ( i = 0; i < nx; i++ ) {
+		hdu.data[Math.floor(j/bin)*xx+Math.floor(i/bin)] += hdu.unbinned[j*nx+i];
+	    }
+	    }
+
+	    hdu.dmin = Number.MAX_VALUE;
+	    hdu.dmax = Number.MIN_VALUE;
+
+	    for ( i = 0; i < xx*yy; i++ ) {
+		hdu.dmin    = Math.min(hdu.dmin, hdu.data[i]);
+		hdu.dmax    = Math.max(hdu.dmax, hdu.data[i]);
+	    }
+
+	    hdu.axis[1] = xx;
+	    hdu.axis[2] = yy;
+	    hdu.bitpix  = -32;
+
 	    JS9.RefreshImage(display, hdu);
-	});
+	} else {
+	    Fitsy.readTableHDUData(hdu.fits, hdu, options, function (hdu) {
+		JS9.RefreshImage(display, hdu);
+	    });
+	}
     }
 
     function getBinParams(div, display) {
@@ -36,11 +78,29 @@
 	if ( im ) {
 	    var form = $(div).find(".binning-form")[0];
 
-	    form.bin.value = im.raw.hdu.table.bin;
-	     form.cx.value = im.raw.hdu.table.cx;
-	     form.cy.value = im.raw.hdu.table.cy;
-	     form.nx.value = im.raw.hdu.table.nx;
-	     form.ny.value = im.raw.hdu.table.ny;
+	    if ( im.raw.hdu.table !== undefined ) {
+		form.bin.value = im.raw.hdu.table.bin;
+		 form.cx.value = im.raw.hdu.table.cx;
+		 form.cy.value = im.raw.hdu.table.cy;
+		 form.nx.value = im.raw.hdu.table.nx;
+		 form.ny.value = im.raw.hdu.table.ny;
+
+		 form.cx.disabled = false;
+		 form.cy.disabled = false;
+		 form.nx.disabled = false;
+		 form.ny.disabled = false;
+	    } else {
+		if ( im.raw.hdu.bin != undefined ) {
+		    form.bin.value = im.raw.hdu.bin;
+		} else {
+		    form.bin.value = 1;
+		}
+
+		 form.cx.disabled = true;
+		 form.cy.disabled = true;
+		 form.nx.disabled = true;
+		 form.ny.disabled = true;
+	    }
 	}
     }
 
@@ -85,6 +145,6 @@
 	    onimageload:    getBinParams,
 	    onimagedisplay: getBinParams,
 
-            winDims: [350, 125],
+            winDims: [400, 125],
     });
 }());
