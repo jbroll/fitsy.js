@@ -24,27 +24,23 @@
 
 	var hdu = im.raw.hdu;
 
-	if ( hdu.head.SIMPLE || hdu.head.XTENSION === "IMAGE" ) {
-	    if ( hdu.unbinned === undefined ) {
-	    	hdu.unbinned = hdu.data;
-	    }
+	if ( hdu.type === "image" ) {
 
 	    var bin = Math.round(Number(form.bin.value));
 	    hdu.bin        = bin;
 	    form.bin.value = bin;
 
-
 	    var nx = hdu.head["NAXIS1"]
 	    var ny = hdu.head["NAXIS2"]
 
 	    var xx = Math.round(nx/bin);
-	    var yy = Math.round(nx/bin);
+	    var yy = Math.round(ny/bin);
 
 	    hdu.data = new Float32Array(nx*ny);
 
 	    for ( j = 0; j < ny; j++ ) {
 	    for ( i = 0; i < nx; i++ ) {
-		hdu.data[Math.floor(j/bin)*xx+Math.floor(i/bin)] += hdu.unbinned[j*nx+i];
+		hdu.data[Math.floor(j/bin)*xx+Math.floor(i/bin)] += hdu.filedata[j*nx+i];
 	    }
 	    }
 
@@ -59,6 +55,43 @@
 	    hdu.axis[1] = xx;
 	    hdu.axis[2] = yy;
 	    hdu.bitpix  = -32;
+
+	    hdu.head  = Fitsy.clone(hdu.filehead);
+	    hdu.card  = Fitsy.clone(hdu.filecard);
+
+	    // Simple standard FITS WCS
+	    //
+	    Fitsy.cardcopy(hdu.card, "CDELT1", hdu.card, "CDELT1", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "CRPIX1", hdu.card, "CRPIX1", function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CDELT2", hdu.card, "CDELT2", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "CRPIX2", hdu.card, "CRPIX2", function(x) { return x/bin; });
+
+	    // Adjust the CD Matrix
+	    //
+	    Fitsy.cardcopy(hdu.card, "CD1_1", hdu.card, "CD1_1", function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CD1_2", hdu.card, "CD1_2", function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CD2_1", hdu.card, "CD2_1", function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CD2_2", hdu.card, "CD2_2", function(x) { return x/bin; });
+
+
+	    // DSS-II image - this is just a guess
+	    //
+	    Fitsy.cardcopy(hdu.card, "PLTSCALE", hdu.card, "PLTSCALE", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "XPIXELSZ", hdu.card, "XPIXELSZ", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "CNPIX1",   hdu.card, "CNPIX1",   function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "YPIXELSZ", hdu.card, "YPIXELSZ", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "CNPIX2",   hdu.card, "CNPIX2",   function(x) { return x/bin; });
+
+	    // Fix up some random commonly used keywords
+	    //
+	    Fitsy.cardcopy(hdu.card, "PIXSCALE", hdu.card, "PIXSCALE", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "SECPIX",   hdu.card, "SECPIX",   function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "SECPIX1",  hdu.card, "SECPIX1",  function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "SECPIX2",  hdu.card, "SECPIX2",  function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "XPIXSIZE", hdu.card, "XPIXSIZE", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "YPIXSIZE", hdu.card, "YPIXSIZE", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "PIXSCAL1", hdu.card, "PIXSCAL1", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "PIXSCAL2", hdu.card, "PIXSCAL2", function(x) { return x*bin; });
 
 	    JS9.RefreshImage(display, hdu);
 	} else {
@@ -78,28 +111,37 @@
 	if ( im ) {
 	    var form = $(div).find(".binning-form")[0];
 
-	    if ( im.raw.hdu.table !== undefined ) {
-		form.bin.value = im.raw.hdu.table.bin;
-		 form.cx.value = im.raw.hdu.table.cx;
-		 form.cy.value = im.raw.hdu.table.cy;
-		 form.nx.value = im.raw.hdu.table.nx;
-		 form.ny.value = im.raw.hdu.table.ny;
+	    if ( im.raw.hdu !== undefined ) {
+		form.rebin.disabled = false;
+		form.bin.disabled = false;
 
-		 form.cx.disabled = false;
-		 form.cy.disabled = false;
-		 form.nx.disabled = false;
-		 form.ny.disabled = false;
-	    } else {
-		if ( im.raw.hdu.bin != undefined ) {
-		    form.bin.value = im.raw.hdu.bin;
+	        if ( im.raw.hdu.table !== undefined ) {
+		    form.bin.value = im.raw.hdu.table.bin;
+		     form.cx.value = im.raw.hdu.table.cx;
+		     form.cy.value = im.raw.hdu.table.cy;
+		     form.nx.value = im.raw.hdu.table.nx;
+		     form.ny.value = im.raw.hdu.table.ny;
+
+
+		     form.cx.disabled = false;
+		     form.cy.disabled = false;
+		     form.nx.disabled = false;
+		     form.ny.disabled = false;
 		} else {
-		    form.bin.value = 1;
-		}
+		    if ( im.raw.hdu.bin != undefined ) {
+			form.bin.value = im.raw.hdu.bin;
+		    } else {
+			form.bin.value = 1;
+		    }
 
-		 form.cx.disabled = true;
-		 form.cy.disabled = true;
-		 form.nx.disabled = true;
-		 form.ny.disabled = true;
+		     form.cx.disabled = true;
+		     form.cy.disabled = true;
+		     form.nx.disabled = true;
+		     form.ny.disabled = true;
+		}
+	    } else {
+		form.rebin.disabled = true;
+		  form.bin.disabled = true;
 	    }
 	}
     }
@@ -113,7 +155,7 @@
 	    <table><tr>	<td>Bin Factor</td>								\
 			<td><input type=text name=bin value=1 size=10 style="text-align:right;"></td>				\
 			<td></td>									\
-		       	<td><input type=button value="Rebin Image" class="rebin-image"></td></tr>	\
+		       	<td><input type=button name=rebin value="Rebin Image" class="rebin-image"></td></tr>	\
 	           <tr>	<td>Center</td>									\
 			<td><input type=text name=cx size=10 style="text-align:right;"></td>					\
 			<td><input type=text name=cy size=10 style="text-align:right;"></td></tr>					\

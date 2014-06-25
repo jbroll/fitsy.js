@@ -2,9 +2,8 @@
 /*jshint node: true, -W099: true, laxbreak:true, laxcomma:true, multistr:true, smarttabs:true */
 /*global alert, XMLHttpRequest
        , Uint8Array, Int8Array, Uint16Array, Int16Array, Int32Array, Float32Array, Float64Array, DataView
-       , FileReader, Blob, Image, document
-       , typedArrayFunction
-       , pako, LZMA, bzip2
+       , FileReader, Blob, Image, window, document
+       , Zee, pako, LZMA, bzip2
  */
 
 "use strict";
@@ -19,6 +18,51 @@ Fitsy = {};
 Fitsy.NAME = "Fitsy";		// The name of this namespace
 Fitsy.VERSION = "1.0";		// The version of this namespace
 
+Fitsy.clone = function (obj) {
+    var copy, i, len, attr;
+
+    // Handle the 3 simple types, and null or undefined
+    if (null === obj || "object" !== typeof obj) { return obj; }
+
+    // Handle Date
+    if (obj instanceof Date) {
+	copy = new Date();
+	copy.setTime(obj.getTime());
+	return copy;
+    }
+
+    // Handle Array
+    if (obj instanceof Array) {
+	copy = [];
+	for ( i = 0, len = obj.length; i < len; i++ ) {
+	    copy[i] = Fitsy.clone(obj[i]);
+	}
+	return copy;
+    }
+
+    // Handle Object
+    if (obj instanceof Object) {
+	copy = {};
+	for ( attr in obj ) {
+	    if ( obj.hasOwnProperty(attr) ) { copy[attr] = Fitsy.clone(obj[attr]); }
+	}
+	return copy;
+    }
+
+    throw new Error("Unable to copy obj! Its type isn't supported.");
+};
+
+Fitsy.strrepeat = function (pattern, count) {
+    if ( count < 1 )  { return ''; }
+    var result = '';
+    while ( count > 1 ) {
+	if (count & 1) { result += pattern; }
+
+	count >>= 1;
+	pattern += pattern;
+    }
+    return result + pattern;
+};
 
 // there are different versions of slice ... with different syntax
 Fitsy.getSlice = function(file, start, end){
@@ -37,11 +81,14 @@ Fitsy.getSlice = function(file, start, end){
 Fitsy.isNumber = function(s) {
   return !isNaN(parseFloat(s)) && isFinite(s);
 };
+Fitsy.xtypeof = function(obj) {
+        return Object.prototype.toString.call(obj).slice(8, -1);
+};
 
 Fitsy.cardpars = function(card){
     var name, value;
     if ( card[8] !== "=" ){ 
-	return [undefined, undefined];
+	return undefined;
     }
     name = card.slice(0, 8).trim();
     value = card.slice(10).replace(/\'/g, " ").replace(/\/.*/, "").trim();
@@ -52,6 +99,7 @@ Fitsy.cardpars = function(card){
     } else if( Fitsy.isNumber(value) ){
 	value = parseFloat(value);
     }
+
     return [name, value];
 };
 
@@ -67,47 +115,51 @@ Fitsy.readImageHDUDataConverter = function(fits, hdu, options, handler){
     switch( hdu.bitpix ) {
      case   8:
 	getfunc = DataView.prototype.getUint8;
-	hdu.data = new Uint8Array(hdu.datapixls);
+	hdu.filedata = new Uint8Array(hdu.datapixls);
 	break;
      case -16:
 	getfunc = DataView.prototype.getUint16;
-	hdu.data = new Uint16Array(hdu.datapixls);
+	hdu.filedata = new Uint16Array(hdu.datapixls);
 	break;
      case  16:
 	if ( hdu.bzero && hdu.bzero === 32768 ) {
 	    getfunc = DataView.prototype.getUint16;
-	    hdu.data = new Uint16Array(hdu.datapixls);
+	    hdu.filedata = new Uint16Array(hdu.datapixls);
 	    hdu.bitpix = -16;
 	} else {
 	    getfunc = DataView.prototype.getInt16;
-	    hdu.data = new Int16Array(hdu.datapixls);
+	    hdu.filedata = new Int16Array(hdu.datapixls);
 	}
 	break;
      case  32:
 	getfunc = DataView.prototype.getInt32;
-	hdu.data = new Int32Array(hdu.datapixls);
+	hdu.filedata = new Int32Array(hdu.datapixls);
 	break;
      case -32:
 	getfunc = DataView.prototype.getFloat32;
-	hdu.data = new Float32Array(hdu.datapixls);
+	hdu.filedata = new Float32Array(hdu.datapixls);
 	break;
      case -64:
 	getfunc = DataView.prototype.getFloat64;
-	hdu.data = new Float64Array(hdu.datapixls);
+	hdu.filedata = new Float64Array(hdu.datapixls);
 	break;
     }
     zero = hdu.bzero || 0;
 
+    hdu.image = hdu.filedata;
+
     // Convert raw bytes to image data
     //
     for(i=0, off=0; i < hdu.datapixls; i++, off += hdu.pixlbytes) {
-	hdu.data[i] = getfunc.call(dv, off, littleEndian) + zero;
-	if ( isNaN(hdu.data[i]) ) {
+	hdu.image[i] = getfunc.call(dv, off, littleEndian) + zero;
+	if ( isNaN(hdu.image[i]) ) {
             hdu.data[i] = 0;
         }
-	hdu.dmin    = Math.min(hdu.dmin, hdu.data[i]);
-	hdu.dmax    = Math.max(hdu.dmax, hdu.data[i]);
+	hdu.dmin    = Math.min(hdu.dmin, hdu.image[i]);
+	hdu.dmax    = Math.max(hdu.dmax, hdu.image[i]);
     }
+
+    hdu.data  = hdu.filedata;
 
     handler(hdu, options);
 };
@@ -142,23 +194,39 @@ Fitsy.readForDeCompress = function(fits) {
     var data = new Uint8Array(fits.read.result);
 
     if ( data[0] === 0xfd && data[1] === 0x37 && data[2] === 0x7a && data[3] === 0x58 ) {	// lzip
+	if ( window.LZMA !== undefined ) {
 
-	LZMA.decompress(data, function(result) {
-	    fits.file = new Blob([result]);
+	    LZMA.decompress(data, function(result) {
+		fits.file = new Blob([result]);
 
-	    fits.read.onloadend = function(){ Fitsy.readHeaderBlock(fits); };
-	    fits.read.onerror   = function(){ Fitsy.readError(fits); };
-	    fits.read.readAsBinaryString(Fitsy.getSlice(fits.file, 0, 2880));
-	});
+		fits.read.onloadend = function(){ Fitsy.readHeaderBlock(fits); };
+		fits.read.onerror   = function(){ Fitsy.readError(fits); };
+		fits.read.readAsBinaryString(Fitsy.getSlice(fits.file, 0, 2880));
+	    });
 
-	return;
+	    return;
+	}
+
+	throw new Error("lzip support not available");
     }
-    if ( data[0] === 0x42 && data[1] === 0x5A ) {						// bzip2
-	data = bzip2.simple(bzip2.array(data));
-	fits.file = new Blob(data);
+
+    if ( data[0] === 0x42 && data[1] === 0x5a ) {						// bzip2
+	if ( window.bzip2 !== undefined  ) {
+	    data = bzip2.simple(bzip2.array(data));
+	    fits.file = new Blob(data);
+	} else {
+	    throw new Error("bzip2 support not available");
+	}
     }
+
     if ( data[0] === 0x1f && data[1] === 0x8B ) {						// gzip
-	data = pako.inflate(data);
+	if ( window.hasOwnProperty("Zee") ) {
+	    data = Zee.decompress(data);
+	} else if ( window.hasOwnProperty("pako") ) {
+	    data = pako.inflate(data);
+	} else {
+	    throw new Error("gzip support not available");
+	}
 	fits.file = new Blob([data]);
     }
 
@@ -205,15 +273,15 @@ Fitsy.readHeaderBlock = function(fits) {
 	
     // Read the block advance the file pointer.
     fits.here += 2880;
-    for(off=0; off < 2880; hdu.ncard++, off += 80) {
+    for ( off=0; off < 2880; hdu.ncard++, off += 80 ) {
 	card = fits.read.result.slice(off, off+80);
 	hdu.card[hdu.ncard] = card;
-	if( card.slice(0, 8) === "END     " ){
+	if ( card.slice(0, 8) === "END     " ) {
 	    end = 1;
 	    break;
 	}
 	pars = Fitsy.cardpars(card);
-	if ( pars[0] ) {
+	if ( pars !== undefined ) {
 	    hdu.head[pars[0]] = pars[1];
 	}
     }
@@ -241,10 +309,18 @@ Fitsy.readHeaderBlock = function(fits) {
 	fits.here += hdu.databloks * 2880;
 	fits.nhdu++;
 
+	hdu.type = "image";
+
+	hdu.filehead = hdu.head;
+	hdu.filecard = hdu.card;
+
 	if ( hdu.head.XTENSION === "BINTABLE"
 	  || hdu.head.XTENSION === "A3DTABLE"
 	  || hdu.head.XTENSION === "3DTABLE" ) {
-	     hdu.table = {};
+
+	    hdu.type = "table";
+
+	    hdu.table = {};
 
 	    hdu.width  = hdu.axis[1];
 	    hdu.length = hdu.axis[2];
@@ -267,12 +343,13 @@ Fitsy.readHeaderBlock = function(fits) {
 
 		    , min: hdu.head["TDMIN"+i] || hdu.head["TLMIN"+i]
 		    , max: hdu.head["TDMAX"+i] || hdu.head["TLMAX"+i]
+		    , ith: i
 		};
 		offs += width;
 	    }
 	}
     }
-    if ( fits.here >= fits.size ) {				// EOF? handler the fits file to the handler function
+    if ( fits.here >= fits.size ) {				// EOF? hand the fits file to the handler function
 	fits.handler(fits);
     } else { 							// Or, read the next header block
 	fits.read.readAsBinaryString(Fitsy.getSlice(fits.file,
@@ -322,7 +399,7 @@ Fitsy.template = function (str, data) {
 };
 
 Fitsy.BinTableTemplate = "									\n\
-  return function (table, image) {								\n\
+  return function (view, image, length) {							\n\
     var i, x, y;										\n\
 												\n\
     var xoff = ((-( {{table.x.range}}/2 + ({{table.cx}}-{{table.x.range}}/2 )) {{BinText}}) | 0)\n\
@@ -330,9 +407,9 @@ Fitsy.BinTableTemplate = "									\n\
     var yoff = ((-( {{table.y.range}}/2 + ({{table.cy}}-{{table.x.range}}/2 )) {{BinText}}) | 0)\n\
     	     + (( {{image.ny}}/2 ) | 0);							\n\
 												\n\
-    for (i = 0; i < table.length; i++) {							\n\
-	x = table.view.get{{table.x.type}}(i * {{table.width}} + {{table.x.offs}});		\n\
-	y = table.view.get{{table.y.type}}(i * {{table.width}} + {{table.y.offs}});		\n\
+    for (i = 0; i < length; i++) {								\n\
+	x = view.get{{table.x.type}}(i * {{table.width}} + {{table.x.offs}});			\n\
+	y = view.get{{table.y.type}}(i * {{table.width}} + {{table.y.offs}});			\n\
 												\n\
 	x = (((x - {{table.x.min}}) {{BinText}}) | 0) + xoff;					\n\
 	y = (((y - {{table.y.min}}) {{BinText}}) | 0) + yoff;					\n\
@@ -348,24 +425,20 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     var opttable = options.table || Fitsy.options.table;
 
     hdu.filename = fits.name;
+    hdu.filedata = fits.read.result;
 
-    hdu.tabl = fits.read.result;
-    hdu.view = new DataView(hdu.tabl);
+    hdu.view     = new DataView(hdu.filedata);
 
-    if ( options.table === undefined ) {
-	options.table = Fitsy.options.table;
-    }
+    hdu.image = new Int32Array(options.table.nx*options.table.ny);
+    hdu.data  = hdu.image;
 
-    if ( options.nobinning ) {
-	handler(hdu, options);
-	return;
-    }
-    hdu.data = new Int32Array(options.table.nx*options.table.ny);
+    hdu.head  = Fitsy.clone(hdu.filehead);
+    hdu.card  = Fitsy.clone(hdu.filecard);
 
     for ( i = 0; i < opttable.xcol.length; i++ ) { 			// Choose an X axis column
 	if ( hdu.table[opttable.xcol[i]] !== undefined ) { break; }
     }
-    for ( i = 0; i < opttable.ycol.length; i++ ) {				// Choose a  Y axis column
+    for ( i = 0; i < opttable.ycol.length; i++ ) {			// Choose a  Y axis column
 	if ( hdu.table[opttable.ycol[i]] !== undefined ) { break; }
     }
 
@@ -377,20 +450,20 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 		, data: hdu.data
     };
 
-    var table = {     x: { type: x.type, offs: x.offs, min: Number(x.min), range: x.max - x.min + 1 }
+    var table = { x: { type: x.type, offs: x.offs, min: Number(x.min), range: x.max - x.min + 1 }
 		, y: { type: y.type, offs: y.offs, min: Number(y.min), range: y.max - y.min + 1 } 
     		, cx: options.table.cx, cy: options.table.cy
 		, width: hdu.width, length: hdu.length
-		, view: hdu.view
+		, bin: opttable.bin
     };
 
     if ( table.cx === undefined ) { table.cx = (x.max - x.min + 1) / 2; }
     if ( table.cy === undefined ) { table.cy = (y.max - y.min + 1) / 2; }
 
-    if ( options.table.bin === 1 ) {
+    if ( table.bin === 1 ) {
 	BinText = "";
     } else {
-	BinText = "/" + Number(opttable.bin);
+	BinText = "/" + Number(table.bin);
     }
 
     var values = { table: table, image: image, BinText: BinText };
@@ -399,7 +472,7 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 
     var binner = new Function(text)();
 
-    binner(table, image, opttable.bin);
+    binner(hdu.view, image, hdu.length);
 
     hdu.table.bin = opttable.bin;
     hdu.table.nx  = opttable.nx;
@@ -419,8 +492,104 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     hdu.axis[1] = image.nx;
     hdu.axis[2] = image.ny;
 
+    // Update card and head to match image
+    //
+    hdu.head.NAXIS1 = image.nx;
+    hdu.head.NAXIS2 = image.ny;
+
+    hdu.card[0] = Fitsy.cardfmt("SIMPLE", 0, true, "Standard FITS Image");
+
+    hdu.card[Fitsy.cardfind(hdu.card, "BITPIX", 0)] = Fitsy.cardfmt("BITPIX", 0, 32, "FITS Data type.");
+
+    hdu.card[Fitsy.cardfind(hdu.card, "NAXIS" , 0)] = Fitsy.cardfmt("NAXIS" , 0,  2, "Number of Axes");
+    hdu.card[Fitsy.cardfind(hdu.card, "NAXIS1", 1)] = Fitsy.cardfmt("NAXIS1", 0, image.nx, "Axis Dimension");
+    hdu.card[Fitsy.cardfind(hdu.card, "NAXIS2", 1)] = Fitsy.cardfmt("NAXIS2", 0, image.ny, "Axis Dimension");
+
+
+    // Add the table column WCS.
+    //
+    i = x.ith;
+
+    Fitsy.cardcopy(hdu.card, "TCTYP" + i, hdu.card, "CTYPE1");
+    Fitsy.cardcopy(hdu.card, "TCRVL" + i, hdu.card, "CRVAL1");
+    Fitsy.cardcopy(hdu.card, "TCDLT" + i, hdu.card, "CDELT1", function(x) { return  x*table.bin; });
+    Fitsy.cardcopy(hdu.card, "TCRPX" + i, hdu.card, "CRPIX1", function(x) { return (x-table.x.min)/table.bin+1.0; });
+    Fitsy.cardcopy(hdu.card, "TCROT" + i, hdu.card, "CROTA1");
+
+    i = y.ith;
+
+    Fitsy.cardcopy(hdu.card, "TCTYP" + i, hdu.card, "CTYPE2");
+    Fitsy.cardcopy(hdu.card, "TCRVL" + i, hdu.card, "CRVAL2");
+    Fitsy.cardcopy(hdu.card, "TCDLT" + i, hdu.card, "CDELT2", function(x) { return  x*table.bin; });
+    Fitsy.cardcopy(hdu.card, "TCRPX" + i, hdu.card, "CRPIX2", function(x) { return (x-table.y.min)/table.bin+1.0; });
+    Fitsy.cardcopy(hdu.card, "TCROT" + i, hdu.card, "CROTA2");
+
     handler(hdu, options);
 };
+
+Fitsy.cardfmt = function (name, nth, value, comment) {
+    var card;
+
+    switch ( Fitsy.xtypeof(value) ) {
+     case 'Boolean':
+	 if ( value ) { value = "T" ;
+	 } else {	value = "F"; }
+	break;
+
+     case 'String':
+	value = "'" + value + "'";
+	break;
+     case 'Number':
+	value = value.toPrecision(15);
+	break;
+    }
+
+    if ( nth !== 0 ) {
+	name = (name + nth.toFixed(0)).slice(0, 8);
+    }
+
+    card = name + " = " + value + " /" + comment;
+
+    return card + Fitsy.strrepeat(" ", 80-card.length);
+}
+
+Fitsy.cardfind = function (cards, name, append) {
+    var i;
+
+    name = name + Fitsy.strrepeat(" ", 8 - name.length);
+
+    for ( i = 0; i < cards.length; i++ ) {
+	if ( cards[i].slice(0, 8) === name ) {
+	    return i;
+	}
+    }
+
+    if ( append === true ) {
+	return i;
+    }
+
+    return undefined;
+}
+
+Fitsy.cardcopy = function (cards1, name1, cards2, name2, func) {
+    var card, value;
+
+    card = Fitsy.cardfind(cards1, name1);
+
+    if ( card === undefined ) { return; }
+
+    var pars = Fitsy.cardpars(cards1[card]);
+
+    if ( pars !== undefined ) {
+	value = pars[1];
+	if ( func !== undefined ) {
+	    value = func(value);
+	}
+
+	cards2[Fitsy.cardfind(cards2, name2, true)] = Fitsy.cardfmt(name2, 0, value, "");
+    }
+}
+
 
 Fitsy.readTableHDUData = function (fits, hdu, options, handler) {
     fits.read.onloadend = function() { Fitsy.readTableHDUDataBinner(fits, hdu, options, handler); };
@@ -534,7 +703,6 @@ Fitsy.onFile = function(files, options, handler) {
 };
 
 
-
 Fitsy.options = {
     table: { nx: 1024, ny: 1024, bin: 1
 	       , xcol: [ "X", "x" ]
@@ -601,7 +769,6 @@ Fitsy.handleImageFile = function (file, options, handler) {
 	    for ( y = 0; y < h; y++ ) {
 		for ( x = 0; x < w; x++ ) {
 		      brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];		// NTSC
-		    //brightness = 0.212 * data[i] + 0.715 * data[i + 1] + 0.073 * data[i + 2];		// "Modern"
 
 		    gray[(h-y)*w+x] = brightness; 
 		    i += 4;
@@ -609,7 +776,7 @@ Fitsy.handleImageFile = function (file, options, handler) {
 	    }
 
 	    var hdu = { head: {}, name: file.name
-		      , data: gray, naxis: 2, axis: [0, w, h], bitpix: -32 };
+		      , filedata: gray, image: gray, naxis: 2, axis: [0, w, h], bitpix: -32 };
 
 	    hdu.dmin = Number.MAX_VALUE;
 	    hdu.dmax = Number.MIN_VALUE;

@@ -3,7 +3,7 @@ Fitsy
  * FITS Images
  * FITS Event files
 
- o Browser Images
+ * Browser Images
 
  * Decompression
     * gzip
@@ -12,7 +12,7 @@ Fitsy
     o Use CharCodeAt() to avoid current call to readForDecompress()?
 
  * Binning Plugin
-    o Bin images
+    * Bin images
     o Choose bin columns
  
  * FITS Explorer
