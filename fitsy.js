@@ -429,7 +429,7 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 
     hdu.view     = new DataView(hdu.filedata);
 
-    hdu.image = new Int32Array(options.table.nx*options.table.ny);
+    hdu.image = new Int32Array(opttable.nx*opttable.ny);
     hdu.data  = hdu.image;
 
     hdu.head  = Fitsy.clone(hdu.filehead);
@@ -452,7 +452,7 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 
     var table = { x: { type: x.type, offs: x.offs, min: Number(x.min), range: x.max - x.min + 1 }
 		, y: { type: y.type, offs: y.offs, min: Number(y.min), range: y.max - y.min + 1 } 
-    		, cx: options.table.cx, cy: options.table.cy
+    		, cx: opttable.cx, cy: opttable.cy
 		, width: hdu.width, length: hdu.length
 		, bin: opttable.bin
     };
@@ -551,7 +551,7 @@ Fitsy.cardfmt = function (name, nth, value, comment) {
     card = name + " = " + value + " /" + comment;
 
     return card + Fitsy.strrepeat(" ", 80-card.length);
-}
+};
 
 Fitsy.cardfind = function (cards, name, append) {
     var i;
@@ -569,7 +569,7 @@ Fitsy.cardfind = function (cards, name, append) {
     }
 
     return undefined;
-}
+};
 
 Fitsy.cardcopy = function (cards1, name1, cards2, name2, func) {
     var card, value;
@@ -588,7 +588,7 @@ Fitsy.cardcopy = function (cards1, name1, cards2, name2, func) {
 
 	cards2[Fitsy.cardfind(cards2, name2, true)] = Fitsy.cardfmt(name2, 0, value, "");
     }
-}
+};
 
 
 Fitsy.readTableHDUData = function (fits, hdu, options, handler) {
