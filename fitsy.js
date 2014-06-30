@@ -512,16 +512,16 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
 
     Fitsy.cardcopy(hdu.card, "TCTYP" + i, hdu.card, "CTYPE1");
     Fitsy.cardcopy(hdu.card, "TCRVL" + i, hdu.card, "CRVAL1");
-    Fitsy.cardcopy(hdu.card, "TCDLT" + i, hdu.card, "CDELT1", function(x) { return  x*table.bin; });
-    Fitsy.cardcopy(hdu.card, "TCRPX" + i, hdu.card, "CRPIX1", function(x) { return (x-table.x.min)/table.bin+1.0; });
+    Fitsy.cardcopy(hdu.card, "TCDLT" + i, hdu.card, "CDELT1", undefined, function(x) { return  x*table.bin; });
+    Fitsy.cardcopy(hdu.card, "TCRPX" + i, hdu.card, "CRPIX1", undefined, function(x) { return (x-table.x.min)/table.bin+1.0; });
     Fitsy.cardcopy(hdu.card, "TCROT" + i, hdu.card, "CROTA1");
 
     i = y.ith;
 
     Fitsy.cardcopy(hdu.card, "TCTYP" + i, hdu.card, "CTYPE2");
     Fitsy.cardcopy(hdu.card, "TCRVL" + i, hdu.card, "CRVAL2");
-    Fitsy.cardcopy(hdu.card, "TCDLT" + i, hdu.card, "CDELT2", function(x) { return  x*table.bin; });
-    Fitsy.cardcopy(hdu.card, "TCRPX" + i, hdu.card, "CRPIX2", function(x) { return (x-table.y.min)/table.bin+1.0; });
+    Fitsy.cardcopy(hdu.card, "TCDLT" + i, hdu.card, "CDELT2", undefined, function(x) { return  x*table.bin; });
+    Fitsy.cardcopy(hdu.card, "TCRPX" + i, hdu.card, "CRPIX2", undefined, function(x) { return (x-table.y.min)/table.bin+1.0; });
     Fitsy.cardcopy(hdu.card, "TCROT" + i, hdu.card, "CROTA2");
 
     handler(hdu, options);
@@ -571,23 +571,26 @@ Fitsy.cardfind = function (cards, name, append) {
     return undefined;
 };
 
-Fitsy.cardcopy = function (cards1, name1, cards2, name2, func) {
+Fitsy.cardcopy = function (cards1, name1, cards2, name2, value, func) {
     var card, value;
 
     card = Fitsy.cardfind(cards1, name1);
 
-    if ( card === undefined ) { return; }
+    if ( card === undefined && value === undefined ) { return; }
 
-    var pars = Fitsy.cardpars(cards1[card]);
+    if ( card !== undefined ) {
+	var pars = Fitsy.cardpars(cards1[card]);
 
-    if ( pars !== undefined ) {
-	value = pars[1];
-	if ( func !== undefined ) {
-	    value = func(value);
+	if ( pars !== undefined ) {
+	    value = pars[1];
 	}
-
-	cards2[Fitsy.cardfind(cards2, name2, true)] = Fitsy.cardfmt(name2, 0, value, "");
     }
+
+    if ( func !== undefined ) {
+	value = func(value);
+    }
+
+    cards2[Fitsy.cardfind(cards2, name2, true)] = Fitsy.cardfmt(name2, 0, value, "");
 };
 
 

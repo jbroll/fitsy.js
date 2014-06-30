@@ -61,37 +61,46 @@
 
 	    // Simple standard FITS WCS
 	    //
-	    Fitsy.cardcopy(hdu.card, "CDELT1", hdu.card, "CDELT1", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "CRPIX1", hdu.card, "CRPIX1", function(x) { return x/bin; });
-	    Fitsy.cardcopy(hdu.card, "CDELT2", hdu.card, "CDELT2", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "CRPIX2", hdu.card, "CRPIX2", function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CDELT1",   hdu.card, "CDELT1", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "CRPIX1",   hdu.card, "CRPIX1", undefined, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CDELT2",   hdu.card, "CDELT2", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "CRPIX2",   hdu.card, "CRPIX2", undefined, function(x) { return x/bin; });
 
 	    // Adjust the CD Matrix
 	    //
-	    Fitsy.cardcopy(hdu.card, "CD1_1", hdu.card, "CD1_1", function(x) { return x/bin; });
-	    Fitsy.cardcopy(hdu.card, "CD1_2", hdu.card, "CD1_2", function(x) { return x/bin; });
-	    Fitsy.cardcopy(hdu.card, "CD2_1", hdu.card, "CD2_1", function(x) { return x/bin; });
-	    Fitsy.cardcopy(hdu.card, "CD2_2", hdu.card, "CD2_2", function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CD1_1",    hdu.card, "CD1_1", undefined, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CD1_2",    hdu.card, "CD1_2", undefined, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CD2_1",    hdu.card, "CD2_1", undefined, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "CD2_2",    hdu.card, "CD2_2", undefined, function(x) { return x/bin; });
 
 
 	    // DSS-II image - this is just a guess
 	    //
-	    Fitsy.cardcopy(hdu.card, "PLTSCALE", hdu.card, "PLTSCALE", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "XPIXELSZ", hdu.card, "XPIXELSZ", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "CNPIX1",   hdu.card, "CNPIX1",   function(x) { return x/bin; });
-	    Fitsy.cardcopy(hdu.card, "YPIXELSZ", hdu.card, "YPIXELSZ", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "CNPIX2",   hdu.card, "CNPIX2",   function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "PLTSCALE", hdu.card, "PLTSCALE", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "XPIXELSZ", hdu.card, "XPIXELSZ", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "CNPIX1",   hdu.card, "CNPIX1",   undefined, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "YPIXELSZ", hdu.card, "YPIXELSZ", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "CNPIX2",   hdu.card, "CNPIX2",   undefined, function(x) { return x/bin; });
 
 	    // Fix up some random commonly used keywords
 	    //
-	    Fitsy.cardcopy(hdu.card, "PIXSCALE", hdu.card, "PIXSCALE", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "SECPIX",   hdu.card, "SECPIX",   function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "SECPIX1",  hdu.card, "SECPIX1",  function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "SECPIX2",  hdu.card, "SECPIX2",  function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "XPIXSIZE", hdu.card, "XPIXSIZE", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "YPIXSIZE", hdu.card, "YPIXSIZE", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "PIXSCAL1", hdu.card, "PIXSCAL1", function(x) { return x*bin; });
-	    Fitsy.cardcopy(hdu.card, "PIXSCAL2", hdu.card, "PIXSCAL2", function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "PIXSCALE", hdu.card, "PIXSCALE", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "SECPIX",   hdu.card, "SECPIX",   undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "SECPIX1",  hdu.card, "SECPIX1",  undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "SECPIX2",  hdu.card, "SECPIX2",  undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "XPIXSIZE", hdu.card, "XPIXSIZE", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "YPIXSIZE", hdu.card, "YPIXSIZE", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "PIXSCAL1", hdu.card, "PIXSCAL1", undefined, function(x) { return x*bin; });
+	    Fitsy.cardcopy(hdu.card, "PIXSCAL2", hdu.card, "PIXSCAL2", undefined, function(x) { return x*bin; });
+
+	    Fitsy.cardcopy(hdu.card, "LTM1_1",   hdu.card, "LTM1_1", 1.0, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "LTM1_2",   hdu.card, "LTM1_2", 0.0, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "LTM2_1",   hdu.card, "LTM2_1", 0.0, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "LTM2_2",   hdu.card, "LTM2_2", 1.0, function(x) { return x/bin; });
+
+	    Fitsy.cardcopy(hdu.card, "LTV1",     hdu.card, "LTV1",   0.0, function(x) { return x/bin; });
+	    Fitsy.cardcopy(hdu.card, "LTV2",     hdu.card, "LTV2",   1.0, function(x) { return x/bin; });
+
 
 	    JS9.RefreshImage(display, hdu);
 	} else {
