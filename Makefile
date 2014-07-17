@@ -9,8 +9,8 @@ lint:
 
 install:
 	mkdir -p ../js9/plugins/fitsy/
-	cp js9fitsy.html ../js9/.
-	cp fitsy.js			$(JS9JS)
+	cp js9fitsy.html 		$(JS9)
+	cp fitsy.js			$(JS9)
 	cp binning.js  			$(JS9JS)
 	cp decomp/pako_inflate.min.js 	$(JS9JS)
 	cp decomp/bzip2.js 		$(JS9JS)

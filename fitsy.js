@@ -510,19 +510,27 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, options, handler) {
     //
     i = x.ith;
 
-    Fitsy.cardcopy(hdu.card, "TCTYP" + i, hdu.card, "CTYPE1");
-    Fitsy.cardcopy(hdu.card, "TCRVL" + i, hdu.card, "CRVAL1");
-    Fitsy.cardcopy(hdu.card, "TCDLT" + i, hdu.card, "CDELT1", undefined, function(x) { return  x*table.bin; });
-    Fitsy.cardcopy(hdu.card, "TCRPX" + i, hdu.card, "CRPIX1", undefined, function(x) { return (x-table.x.min)/table.bin+1.0; });
-    Fitsy.cardcopy(hdu.card, "TCROT" + i, hdu.card, "CROTA1");
+    Fitsy.cardcopy(hdu, "TCTYP" + i, hdu, "CTYPE1");
+    Fitsy.cardcopy(hdu, "TCRVL" + i, hdu, "CRVAL1");
+    Fitsy.cardcopy(hdu, "TCDLT" + i, hdu, "CDELT1", undefined, function(x) { return  x*table.bin; });
+    Fitsy.cardcopy(hdu, "TCRPX" + i, hdu, "CRPIX1", undefined, function(x) { return (x-table.x.min)/table.bin+1.0; });
+    Fitsy.cardcopy(hdu, "TCROT" + i, hdu, "CROTA1");
 
     i = y.ith;
 
-    Fitsy.cardcopy(hdu.card, "TCTYP" + i, hdu.card, "CTYPE2");
-    Fitsy.cardcopy(hdu.card, "TCRVL" + i, hdu.card, "CRVAL2");
-    Fitsy.cardcopy(hdu.card, "TCDLT" + i, hdu.card, "CDELT2", undefined, function(x) { return  x*table.bin; });
-    Fitsy.cardcopy(hdu.card, "TCRPX" + i, hdu.card, "CRPIX2", undefined, function(x) { return (x-table.y.min)/table.bin+1.0; });
-    Fitsy.cardcopy(hdu.card, "TCROT" + i, hdu.card, "CROTA2");
+    Fitsy.cardcopy(hdu, "TCTYP" + i, hdu, "CTYPE2");
+    Fitsy.cardcopy(hdu, "TCRVL" + i, hdu, "CRVAL2");
+    Fitsy.cardcopy(hdu, "TCDLT" + i, hdu, "CDELT2", undefined, function(x) { return  x*table.bin; });
+    Fitsy.cardcopy(hdu, "TCRPX" + i, hdu, "CRPIX2", undefined, function(x) { return (x-table.y.min)/table.bin+1.0; });
+    Fitsy.cardcopy(hdu, "TCROT" + i, hdu, "CROTA2");
+
+    Fitsy.cardcopy(hdu, "LTV1",      hdu, "LTV1",   0.0, function(x) { return (image.nx/2-hdu.table.cx)/table.bin; });
+    Fitsy.cardcopy(hdu, "LTV2",      hdu, "LTV2",   0.0, function(x) { return (image.ny/2-hdu.table.cy)/table.bin; });
+
+    Fitsy.cardcopy(hdu, "LTM1_1",    hdu, "LTM1_1", 1.0, function(x) { return x/table.bin; });
+    Fitsy.cardcopy(hdu, "LTM1_2",    hdu, "LTM1_2", 0.0, function(x) { return x/table.bin; });
+    Fitsy.cardcopy(hdu, "LTM2_1",    hdu, "LTM2_1", 0.0, function(x) { return x/table.bin; });
+    Fitsy.cardcopy(hdu, "LTM2_2",    hdu, "LTM2_2", 1.0, function(x) { return x/table.bin; });
 
     handler(hdu, options);
 };
@@ -548,7 +556,9 @@ Fitsy.cardfmt = function (name, nth, value, comment) {
 	name = (name + nth.toFixed(0)).slice(0, 8);
     }
 
-    card = name + " = " + value + " /" + comment;
+    name += Fitsy.strrepeat(" ", 8-name.length);
+
+    card = name + "= " + value + " /" + comment;
 
     return card + Fitsy.strrepeat(" ", 80-card.length);
 };
@@ -565,21 +575,22 @@ Fitsy.cardfind = function (cards, name, append) {
     }
 
     if ( append === true ) {
-	return i;
+	cards[i] = cards[i-1];
+	return i-1;
     }
 
     return undefined;
 };
 
-Fitsy.cardcopy = function (cards1, name1, cards2, name2, value, func) {
+Fitsy.cardcopy = function (hdu1, name1, hdu2, name2, value, func) {
     var card, value;
 
-    card = Fitsy.cardfind(cards1, name1);
+    card = Fitsy.cardfind(hdu1.card, name1);
 
     if ( card === undefined && value === undefined ) { return; }
 
     if ( card !== undefined ) {
-	var pars = Fitsy.cardpars(cards1[card]);
+	var pars = Fitsy.cardpars(hdu1.card[card]);
 
 	if ( pars !== undefined ) {
 	    value = pars[1];
@@ -590,7 +601,8 @@ Fitsy.cardcopy = function (cards1, name1, cards2, name2, value, func) {
 	value = func(value);
     }
 
-    cards2[Fitsy.cardfind(cards2, name2, true)] = Fitsy.cardfmt(name2, 0, value, "");
+    hdu2.card[Fitsy.cardfind(hdu2.card, name2, true)] = Fitsy.cardfmt(name2, 0, value, "");
+    hdu2.head[name2] = value;
 };
 
 
