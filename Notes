@@ -12,7 +12,7 @@ Fitsy
     o Use CharCodeAt() to avoid current call to readForDecompress()?
 
  * Binning Plugin
-    * Bin images
+    o Bin images
     o Choose bin columns
  
  * FITS Explorer
@@ -40,26 +40,5 @@ Fitsy
 
  * Fitsy test page.
     o Written needs review when Eric completes Fabric port.
-
-
-
-
-
-
-
-int itlp2i (double dp, double tlmin, double binsiz, int type)
-{
-  if ( (binsiz == 1.0) || (binsiz <= 0.0) ) {
-    return (int)((dp - tlmin) + 1.0);
-  }  else {
-    return (int)((dp - tlmin)/binsiz + 1.0);
-  }
-}
-
-value = itlp2i((double)eptr[offset[j]], minval[j], binsiz[j], type);
-
-	(double)eptr[offset[j]]		// This is the column value.
-
-	minval it the TLMIN value (1 or 0.5?)
 
 

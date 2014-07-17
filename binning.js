@@ -19,7 +19,7 @@
 	var options = $.extend(true, {}, Fitsy.options
 	    , { table: { cx: form.cx.value , cy: form.cy.value  
 	    	       , nx: form.nx.value , ny: form.ny.value
-		       , bin: form.bin.value }
+		       , bin: form.bin.value , filter: form.filter.value }
 	      });
 
 	var hdu = im.raw.hdu;
@@ -36,11 +36,11 @@
 	    var xx = Math.round(nx/bin);
 	    var yy = Math.round(ny/bin);
 
-	    hdu.data = new Float32Array(nx*ny);
+	    hdu.image = new Float32Array(nx*ny);
 
 	    for ( j = 0; j < ny; j++ ) {
 	    for ( i = 0; i < nx; i++ ) {
-		hdu.data[Math.floor(j/bin)*xx+Math.floor(i/bin)] += hdu.filedata[j*nx+i];
+		hdu.image[Math.floor(j/bin)*xx+Math.floor(i/bin)] += hdu.filedata[j*nx+i];
 	    }
 	    }
 
@@ -48,8 +48,8 @@
 	    hdu.dmax = Number.MIN_VALUE;
 
 	    for ( i = 0; i < xx*yy; i++ ) {
-		hdu.dmin    = Math.min(hdu.dmin, hdu.data[i]);
-		hdu.dmax    = Math.max(hdu.dmax, hdu.data[i]);
+		hdu.dmin    = Math.min(hdu.dmin, hdu.image[i]);
+		hdu.dmax    = Math.max(hdu.dmax, hdu.image[i]);
 	    }
 
 	    hdu.axis[1] = xx;
@@ -99,8 +99,7 @@
 	    Fitsy.cardcopy(hdu, "LTM2_2",   hdu, "LTM2_2", 1.0, function(x) { return x/bin; });
 
 	    Fitsy.cardcopy(hdu, "LTV1",     hdu, "LTV1",   0.0, function(x) { return x/bin; });
-	    Fitsy.cardcopy(hdu, "LTV2",     hdu, "LTV2",   1.0, function(x) { return x/bin; });
-
+	    Fitsy.cardcopy(hdu, "LTV2",     hdu, "LTV2",   0.0, function(x) { return x/bin; });
 
 	    JS9.RefreshImage(display, hdu);
 	} else {
@@ -130,12 +129,14 @@
 		     form.cy.value = im.raw.hdu.table.cy;
 		     form.nx.value = im.raw.hdu.table.nx;
 		     form.ny.value = im.raw.hdu.table.ny;
+		     form.filter.value = im.raw.hdu.table.filter || "";
 
 
 		     form.cx.disabled = false;
 		     form.cy.disabled = false;
 		     form.nx.disabled = false;
 		     form.ny.disabled = false;
+		     form.filter.disabled = false;
 		} else {
 		    if ( im.raw.hdu.bin != undefined ) {
 			form.bin.value = im.raw.hdu.bin;
@@ -147,6 +148,7 @@
 		     form.cy.disabled = true;
 		     form.nx.disabled = true;
 		     form.ny.disabled = true;
+		     form.filter.disabled = true;
 		}
 	    } else {
 		form.rebin.disabled = true;
@@ -158,27 +160,58 @@
 
     function binningInit() {
 	var im  = JS9.GetImage(this.display);
+	var that = this;
 	var div = this.div;
 
-	div.innerHTML = '<form class="binning-form">							\
+//        if( im && (im.source !== "fits") ){
+//            div.innerHTML = '<p><center>Binning is available only for FITS files.</center>';
+//            return;
+//        }
+
+	if( !im || (im && (!im.raw.hdu || !im.raw.hdu.table)) ){
+	    div.innerHTML = '<p><center>Binning is available for FITS binary tables.</center>';
+	    return;
+	}
+
+	div.innerHTML = '<form class="binning-form" style="margin: 5px">				\
 	    <table><tr>	<td>Bin Factor</td>								\
-			<td><input type=text name=bin value=1 size=10 style="text-align:right;"></td>				\
-			<td></td>									\
-		       	<td><input type=button name=rebin value="Rebin Image" class="rebin-image"></td></tr>	\
+			<td><input type=text name=bin value=1 size=10 style="text-align:right;"></td>	\
+			<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+		   </tr>										\
 	           <tr>	<td>Center</td>									\
-			<td><input type=text name=cx size=10 style="text-align:right;"></td>					\
-			<td><input type=text name=cy size=10 style="text-align:right;"></td></tr>					\
+			<td><input type=text name=cx size=10 style="text-align:right;"></td>		\
+			<td><input type=text name=cy size=10 style="text-align:right;"></td>    	\
+			<td>&nbsp;</td>									\
+		   </tr>										\
 	           <tr>	<td>Image Size</td>								\
-			<td><input type=text name=nx size=10 style="text-align:right;"></td>					\
-			<td><input type=text name=ny size=10 style="text-align:right;"></td></tr>					\
+			<td><input type=text name=nx size=10 style="text-align:right;"></td>		\
+			<td><input type=text name=ny size=10 style="text-align:right;"></td>		\
+			<td>&nbsp;</td>									\
+		   </tr>										\
+	           <tr>	<td>Filter</td>									\
+			<td colspan="2"><input type=text name=filter size="24" style="text-align:left;"></td>	\
+			<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+		   </tr>										\
+	           <tr>	<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+		   </tr>										\
+		   <tr>											\
+		       	<td><input type=button name=rebin value="Rebin" class="rebin-image"></td>	\
+			<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+		       	<td><input type=button name=close value="Close" class="close-image"></td>	\
 		   </tr>										\
 	    </table>											\
-	    <p>												\
 	    </form>';
 
 	var display = this.display;
 
 	$(div).find(".rebin-image").click(function () { reBinImage(div, display); });
+	$(div).find(".close-image").click(function () { if( that.winHandle ){ that.winHandle.close()} });
 
 	if ( im ) {
 	    getBinParams(div, display);
@@ -188,14 +221,14 @@
     JS9.RegisterPlugin("JS9", "Binning", binningInit, {
 	    menu: "view",
 
-            winTitle: "Binning",
+            winTitle: "FITS Binary Table Binning",
             menuItem: "Binning",
 
 	    toolbarSeparate: true,
 
-	    onimageload:    getBinParams,
-	    onimagedisplay: getBinParams,
+	    onimageload:    binningInit,
+	    onimagedisplay: binningInit,
 
-            winDims: [400, 125],
+            winDims: [350, 180],
     });
 }());
