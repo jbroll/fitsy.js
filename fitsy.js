@@ -299,8 +299,6 @@ Fitsy.readImageHDUDataConverter = function(fits, hdu, options, handler){
     hdu.dmax = Number.MIN_VALUE;
     hdu.filename = fits.name;
 
-    Fitsy.waiting(true);
-
     switch(fits.ftype){
     case "array":
 	if( fits.rlo ){
@@ -372,8 +370,6 @@ Fitsy.readImageHDUDataConverter = function(fits, hdu, options, handler){
 	}
     }
     hdu.converted = true;
-
-    Fitsy.waiting(false);
 
     handler(hdu, options);
 };
@@ -449,24 +445,19 @@ Fitsy.readForDeCompress = function(fits) {
 	}
 
 	Fitsy.error("lzip support not available");
-    }
-
-    if ( data[0] === 0x42 && data[1] === 0x5a ) {						// bzip2
+    } else if ( data[0] === 0x42 && data[1] === 0x5a ) {						// bzip2
 	if ( window.bzip2 !== undefined  ) {
 	    data = bzip2.simple(bzip2.array(data));
 	    fits.file = new Blob(data);
 	} else {
 	    Fitsy.error("bzip2 support not available");
 	}
-    }
-
-    if ( data[0] === 0x1f && data[1] === 0x8B ) {						// gzip
+    } else if ( data[0] === 0x1f && data[1] === 0x8B ) {						// gzip
 	// we are done with these ... so tell garbage collector
 	delete fits.file;
 	delete fits.hdu;
 	fits.hdu = [];
 	if ( window.hasOwnProperty("Astroem") ) {
-	    Fitsy.waiting(true);
 	    if( data.buffer.byteLength > Fitsy.options.gzfilesize ) {
 		// new gzip array object
 		fits.ftype = "gzarray";
@@ -487,7 +478,6 @@ Fitsy.readForDeCompress = function(fits) {
 		fits.file = data.buffer;
 		fits.size = fits.file.byteLength;
 	    }
-	    Fitsy.waiting(false);
 	} else if ( window.hasOwnProperty("Zee") ) {
 	    data = Zee.decompress(data);
 	    // fits.file = new Blob([data]);
@@ -503,6 +493,10 @@ Fitsy.readForDeCompress = function(fits) {
 	} else {
 	    Fitsy.error("gzip support not available");
 	}
+    } else {
+
+	Fitsy.error("not a recognized FITS file (compressed or otherwise): " + fits.name);
+
     }
 
     // fits.read.onloadend = function(){ Fitsy.readHeaderBlock(fits); };
@@ -520,6 +514,7 @@ Fitsy.readHeaderBlock = function(fits) {
     // if we hit EOF on last read (usually a gzip'ed file), call the handler
     if( fits.eof ){
 	// call handler
+	Fitsy.waiting(false);
 	fits.handler(fits);
     }
 
@@ -538,11 +533,17 @@ Fitsy.readHeaderBlock = function(fits) {
  	hdu.nth  = fits.nhdu;
 
 	if ( fits.here === 0 && fits.result.slice(0, 6) !== "SIMPLE" ) {
-	    // fits.read.onloadend = function(){ Fitsy.readForDeCompress(fits); };
+	    // fits.read.onloadend=function(){ Fitsy.readForDeCompress(fits); };
 	    // fits.read.readAsArrayBuffer(fits.file);
-	    Fitsy.getDataSlice(fits, "asArray", null, null,
+
+	    // read entire compressed file and ready it for decompression
+	    Fitsy.waiting(true);
+	    // OMG: a delay is required to ensure cursor gets set to waiting
+	    setTimeout(function() {
+		Fitsy.getDataSlice(fits, "asArray", null, null,
 			       Fitsy.readForDeCompress, Fitsy.readError,
 			       fits);
+	    }, Fitsy.options.wtimeout);
 
 	    return;
 	}
@@ -636,6 +637,7 @@ Fitsy.readHeaderBlock = function(fits) {
 	}
     }
     if ( (fits.here >= fits.size) && (fits.size !== -1) ) {				// EOF? hand the fits file to the handler function
+	Fitsy.waiting(false);
 	fits.handler(fits);
     } else { 							// Or, read the next header block
 	// fits.read.readAsBinaryString(Fitsy.getFileSlice(fits.file,
@@ -652,6 +654,9 @@ Fitsy.fitsopen = function(file, handler) {
     fits.hdu  = [];
     fits.read = new FileReader();
     fits.handler = handler; 		// User callback to complete delivery of FITS data.
+    if( !file ){
+	Fitsy.readError(null);
+    }
     fits.name = file.name;
     fits.size = file.size;
     fits.file = file;
@@ -724,8 +729,6 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, nev, options, handler) {
     if( !hdu.nev ){
 
 	hdu.filename = fits.name;
-
-	Fitsy.waiting(true);
 
 	if( hdu.image && (hdu.image.length >= (opttable.nx * opttable.ny)) ){
 	    for(i=0; i<hdu.image.length; i++){
@@ -882,8 +885,6 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, nev, options, handler) {
 	Fitsy.cardcopy(hdu, "LTM1_2",    hdu, "LTM1_2", 0.0, function(x) { return x/table.bin; });
 	Fitsy.cardcopy(hdu, "LTM2_1",    hdu, "LTM2_1", 0.0, function(x) { return x/table.bin; });
 	Fitsy.cardcopy(hdu, "LTM2_2",    hdu, "LTM2_2", 1.0, function(x) { return x/table.bin; });
-
-	Fitsy.waiting(false);
 
 	handler(hdu, options);
 
@@ -1086,7 +1087,9 @@ Fitsy.onFile = function(files, options, handler) {
 	if ( files[i].type !== "image/fits" && files[i].type.indexOf("image/") !== -1 ) {
 	    Fitsy.handleImageFile(files[i], options, handler);
 	} else {
-	    Fitsy.handleFITSFile(files[i], options, handler);
+	    try{ Fitsy.handleFITSFile(files[i], options, handler); }
+	    catch(e){ Fitsy.error("could not load FITS file: " + 
+				  files[i].name); }
 	}
     }
 };
@@ -1096,6 +1099,8 @@ Fitsy.options = {
     maxev: 20480,
     gzfilesize: 100 * 1024 * 1024,
     gzheapsize:   4 * 1024 * 1024,
+    xtimeout: 10000,
+    wtimeout: 100,
     table: { nx: 1024, ny: 1024, bin: 1
 	       , xcol: [ "X", "x" ]
 	       , ycol: [ "Y", "y" ] }
@@ -1115,6 +1120,11 @@ Fitsy.fetchURL = function(name, url, options, handler) {
 
     xhr.onload = function(e) {
 	var blob;
+	// any response from the server will do
+	if( xhr.xtimeout ){
+	    clearTimeout(xhr.xtimeout);
+	    delete xhr.xtimeout;
+	}
         if ( this.readyState === 4 ) {
 	    if ( this.status === 200 || this.status === 0 ) {
 	        blob      = new Blob([this.response]);
@@ -1123,6 +1133,10 @@ Fitsy.fetchURL = function(name, url, options, handler) {
 		if ( options.messages ) { options.messages(""); }
 
 		Fitsy.onFile([blob], options, handler);
+	    } else if( this.status === 404 ) {
+		Fitsy.error("could not find " + url);
+	    } else {
+		Fitsy.error("can't load " + url + " (" + this.status + ")");
 	    }
 	}
     };
@@ -1131,7 +1145,14 @@ Fitsy.fetchURL = function(name, url, options, handler) {
 	xhr.addEventListener("error"   , function(e) { options.messages("error loading FITS file"); });
 	xhr.addEventListener("abort"   , function(e) { options.messages("abort while loading FITS file"); });
     }
-    xhr.send();
+
+    try{ xhr.send(); }
+    catch(e){ Fitsy.error("request to load " + url + " failed", e); }
+    // set a timeout to catch when Mac ignores the connect request entirely
+    xhr.xtimeout=setTimeout(function(){
+	Fitsy.error("timeout while waiting for response from server; " + 
+		    url + " might not exist");
+    }, Fitsy.options.xtimeout);
 };
 
 Fitsy.handleImageFile = function (file, options, handler) {

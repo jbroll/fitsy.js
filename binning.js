@@ -157,24 +157,24 @@
 	}
     }
 
-
     function binningInit() {
-	var im  = JS9.GetImage(this.display);
-	var that = this;
 	var div = this.div;
-
-//        if( im && (im.source !== "fits") ){
-//            div.innerHTML = '<p><center>Binning is available only for FITS files.</center>';
-//            return;
-//        }
+	var display = this.display;
+	var win = this.winHandle;
+	var disclose = "";
+	var im  = JS9.GetImage(this.display);
 
 	if( !im || (im && (!im.raw.hdu || !im.raw.hdu.table)) ){
 	    div.innerHTML = '<p><center>Binning is available for FITS binary tables.</center>';
 	    return;
 	}
 
-	div.innerHTML = '<form class="binning-form" style="margin: 5px">				\
-	    <table><tr>	<td>Bin Factor</td>								\
+	if( !win ){
+	    disclose = 'disabled="disabled"';
+	}
+
+	$(div).html('<form class="binning-form" style="margin: 5px">				\
+	    <table><tr>	<td>Bin&nbsp;Factor</td>							\
 			<td><input type=text name=bin value=1 size=10 style="text-align:right;"></td>	\
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
@@ -184,7 +184,7 @@
 			<td><input type=text name=cy size=10 style="text-align:right;"></td>    	\
 			<td>&nbsp;</td>									\
 		   </tr>										\
-	           <tr>	<td>Image Size</td>								\
+	           <tr>	<td>Image&nbsp;Size</td>								\
 			<td><input type=text name=nx size=10 style="text-align:right;"></td>		\
 			<td><input type=text name=ny size=10 style="text-align:right;"></td>		\
 			<td>&nbsp;</td>									\
@@ -203,32 +203,35 @@
 		       	<td><input type=button name=rebin value="Rebin" class="rebin-image"></td>	\
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
-		       	<td><input type=button name=close value="Close" class="close-image"></td>	\
+		       	<td><input type=button name=close value="Close" class="close-image" ' + disclose + '></td>	\
 		   </tr>										\
 	    </table>											\
-	    </form>';
+	    </form>');
 
-	var display = this.display;
-
-	$(div).find(".rebin-image").click(function () { reBinImage(div, display); });
-	$(div).find(".close-image").click(function () { if( that.winHandle ){ that.winHandle.close()} });
+// 	click doesn't work on localhost on a Mac using Chrome/Safari, but mouseup does!
+//	$(div).find(".rebin-image").on("click", function () { reBinImage(div, display); });
+//	$(div).find(".close-image").on("click", function () { if( win ){ win.close(); } });
+	$(div).find(".rebin-image").on("mouseup", function () { reBinImage(div, display); });
+	$(div).find(".close-image").on("mouseup", function () { if( win ){ win.close(); } });
 
 	if ( im ) {
 	    getBinParams(div, display);
 	}
     }
 
-    JS9.RegisterPlugin("JS9", "Binning", binningInit, {
+    JS9.RegisterPlugin("Fits", "Binning", binningInit, {
 	    menu: "view",
 
             winTitle: "FITS Binary Table Binning",
-            menuItem: "Binning",
+	    winResize: true,
 
-	    toolbarSeparate: true,
+            menuItem: "Binning",
 
 	    onimageload:    binningInit,
 	    onimagedisplay: binningInit,
 
-            winDims: [350, 180],
+	    help:     "fitsy/binning.html",
+
+            winDims: [400, 180],
     });
 }());
