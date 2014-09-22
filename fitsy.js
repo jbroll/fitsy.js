@@ -292,7 +292,7 @@ Fitsy.cardpars = function(card){
 };
 
 Fitsy.readImageHDUDataConverter = function(fits, hdu, options, handler){
-    var dv, getfunc, setfunc, tval, i, off, zero;
+    var dv, getfunc, setfunc, tval, i, off, scale, zero, memerr;
     var rstart = 0;
     var littleEndian;
     hdu.dmin = Number.MAX_VALUE;
@@ -308,59 +308,71 @@ Fitsy.readImageHDUDataConverter = function(fits, hdu, options, handler){
 	break;
     }
 
-    try{
     switch( hdu.bitpix ) {
      case   8:
 	getfunc = DataView.prototype.getUint8;
 	setfunc = DataView.prototype.setUint8;
-	hdu.filedata = new Uint8Array(fits.result, rstart);
+	try{ hdu.filedata = new Uint8Array(fits.result, rstart); }
+	catch(e){memerr = true;}
 	break;
      case -16:
 	getfunc = DataView.prototype.getUint16;
 	setfunc = DataView.prototype.setUint16;
-	hdu.filedata = new Uint16Array(fits.result, rstart);
+	try{hdu.filedata = new Uint16Array(fits.result, rstart);}
+	catch(e){memerr = true;}
 	break;
      case  16:
 	if ( hdu.bzero && hdu.bzero === 32768 ) {
-	    getfunc = DataView.prototype.getUint16;
+	    getfunc = DataView.prototype.getInt16;
 	    setfunc = DataView.prototype.setUint16;
-	    hdu.filedata = new Uint16Array(fits.result, rstart);
+	    try{hdu.filedata = new Uint16Array(fits.result, rstart);}
+	    catch(e){memerr = true;}
 	    hdu.bitpix = -16;
 	} else {
 	    getfunc = DataView.prototype.getInt16;
 	    setfunc = DataView.prototype.setInt16;
-	    hdu.filedata = new Int16Array(fits.result, rstart);
+	    try{hdu.filedata = new Int16Array(fits.result, rstart);}
+	    catch(e){memerr = true;}
 	}
 	break;
      case  32:
 	getfunc = DataView.prototype.getInt32;
 	setfunc = DataView.prototype.setInt32;
-	hdu.filedata = new Int32Array(fits.result, rstart);
+	try{hdu.filedata = new Int32Array(fits.result, rstart);}
+	catch(e){memerr = true;}
 	break;
      case -32:
 	getfunc = DataView.prototype.getFloat32;
 	setfunc = DataView.prototype.setFloat32;
-	hdu.filedata = new Float32Array(fits.result, rstart);
+	try{hdu.filedata = new Float32Array(fits.result, rstart);}
+	catch(e){memerr = true;}
 	break;
      case -64:
 	getfunc = DataView.prototype.getFloat64;
 	setfunc = DataView.prototype.setFloat64;
-	hdu.filedata = new Float64Array(fits.result, rstart);
+	try{hdu.filedata = new Float64Array(fits.result, rstart);}
+	catch(e){memerr = true;}
+	break;
+    default:
+	Fitsy.error("unsupported FITS BITPIX value: " + hdu.bitpix);
 	break;
     }
-    } catch(e){ Fitsy.error("can't allocate enough memory for this FITS image", e); }
-
+    // process memory allocation errors
+    if( memerr ){
+	Fitsy.error("can't allocate enough memory for this FITS image");
+    }
     // this is where the caller (e.g. JS9) sees the data
     hdu.image = hdu.filedata;
 
     zero = hdu.bzero || 0;
+    scale = hdu.bscale || 1;
 
     // Convert raw bytes to image data using the appropriate data view
     //
     dv = new DataView(fits.result);
     littleEndian = hdu.converted ? Fitsy.hostEndian : false;
     for(i=0, off=rstart; i < hdu.datapixls; i++, off += hdu.pixlbytes) {
-	tval = getfunc.call(dv, off, littleEndian) + zero;
+	tval = getfunc.call(dv, off, littleEndian) * scale + zero;
 	if ( !isNaN(tval) ) {
 	    hdu.dmin    = Math.min(hdu.dmin, tval);
 	    hdu.dmax    = Math.max(hdu.dmax, tval);
@@ -864,7 +876,13 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, nev, options, handler) {
 	Fitsy.cardcopy(hdu, "TCTYP" + i, hdu, "CTYPE1");
 	Fitsy.cardcopy(hdu, "TCRVL" + i, hdu, "CRVAL1");
 	Fitsy.cardcopy(hdu, "TCDLT" + i, hdu, "CDELT1", undefined, function(x) { return  x*table.bin; });
-	Fitsy.cardcopy(hdu, "TCRPX" + i, hdu, "CRPIX1", undefined, function(x) { return (x-table.x.min)/table.bin+1.0; });
+	Fitsy.cardcopy(hdu, "TCRPX" + i, hdu, "CRPIX1", undefined, function(x) { 
+//	    return (x-table.x.min)/table.bin+1.0;
+	    // from funtools/funcopy.c, subtracting the 0.5 term makes them match exactly
+	    // not sure why the binning term has to be removed to make it come out right ...
+	    // return (x - (hdu.table.cx - (hdu.table.nx/2))) / hdu.table.bin - 0.5;
+	    return (x - (hdu.table.cx - (hdu.table.nx/2))) - 0.5;
+	});
 	Fitsy.cardcopy(hdu, "TCROT" + i, hdu, "CROTA1");
 
 	i = y.ith;
@@ -872,7 +890,10 @@ Fitsy.readTableHDUDataBinner = function (fits, hdu, nev, options, handler) {
 	Fitsy.cardcopy(hdu, "TCTYP" + i, hdu, "CTYPE2");
 	Fitsy.cardcopy(hdu, "TCRVL" + i, hdu, "CRVAL2");
 	Fitsy.cardcopy(hdu, "TCDLT" + i, hdu, "CDELT2", undefined, function(x) { return  x*table.bin; });
-	Fitsy.cardcopy(hdu, "TCRPX" + i, hdu, "CRPIX2", undefined, function(x) { return (x-table.y.min)/table.bin+1.0; });
+	Fitsy.cardcopy(hdu, "TCRPX" + i, hdu, "CRPIX2", undefined, function(x) { 
+//	    return (x-table.y.min)/table.bin+1.0; 
+	    return (x - (hdu.table.cy - (hdu.table.ny/2))) - 0.5;
+	});
 	Fitsy.cardcopy(hdu, "TCROT" + i, hdu, "CROTA2");
 
 //    Fitsy.cardcopy(hdu, "LTV1",      hdu, "LTV1",   0.0, function(x) { return (image.nx/2-hdu.table.cx)/table.bin; });
@@ -1002,9 +1023,10 @@ Fitsy.convertPixel = function (data, bitpix, zero) {
 	return dv.getFloat32(0, false);
     case -64:
 	return dv.getFloat64(0, false);
+    default:
+	Fitsy.error("unknown BITPIX value: " + bitpix);
+	return undefined;
     }
-
-    return undefined;
 };
 
 Fitsy.getTableValue = function (hdu, row, col) {
@@ -1120,11 +1142,6 @@ Fitsy.fetchURL = function(name, url, options, handler) {
 
     xhr.onload = function(e) {
 	var blob;
-	// any response from the server will do
-	if( xhr.xtimeout ){
-	    clearTimeout(xhr.xtimeout);
-	    delete xhr.xtimeout;
-	}
         if ( this.readyState === 4 ) {
 	    if ( this.status === 200 || this.status === 0 ) {
 	        blob      = new Blob([this.response]);
@@ -1140,6 +1157,19 @@ Fitsy.fetchURL = function(name, url, options, handler) {
 	    }
 	}
     };
+
+    xhr.onerror = function(e) {
+	Fitsy.error("can't load " + url);
+    };
+
+    xhr.onreadystatechange=function() {
+        // any response from the server will do
+	if( xhr.xtimeout ){
+	    clearTimeout(xhr.xtimeout);
+	    delete xhr.xtimeout;
+	}
+    };
+
     if ( options.messages ){
 	xhr.addEventListener("progress", function(e) { options.messages("progress " + e.loaded.toString()); });
 	xhr.addEventListener("error"   , function(e) { options.messages("error loading FITS file"); });
@@ -1148,6 +1178,7 @@ Fitsy.fetchURL = function(name, url, options, handler) {
 
     try{ xhr.send(); }
     catch(e){ Fitsy.error("request to load " + url + " failed", e); }
+
     // set a timeout to catch when Mac ignores the connect request entirely
     xhr.xtimeout=setTimeout(function(){
 	Fitsy.error("timeout while waiting for response from server; " + 

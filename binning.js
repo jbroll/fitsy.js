@@ -11,7 +11,7 @@
     JS9.debug = 2;
 
 	var i, j;
-	var im   = JS9.GetImage(display);
+	var im   = JS9.GetImage({display: display});
 	var form = $(div).find(".binning-form")[0];
 
 	if ( !im ) { return; }
@@ -101,10 +101,10 @@
 	    Fitsy.cardcopy(hdu, "LTV1",     hdu, "LTV1",   0.0, function(x) { return x/bin; });
 	    Fitsy.cardcopy(hdu, "LTV2",     hdu, "LTV2",   0.0, function(x) { return x/bin; });
 
-	    JS9.RefreshImage(display, hdu);
+	    JS9.RefreshImage(hdu, {display: display});
 	} else {
 	    Fitsy.readTableHDUData(hdu.fits, hdu, options, function (hdu) {
-		JS9.RefreshImage(display, hdu);
+	        JS9.RefreshImage(hdu, {display: display});
 	    });
 	}
     }
@@ -114,7 +114,7 @@
 	    div     = this.div;
 	    display = this.display;
 	}
-	var im   = JS9.GetImage(display);
+	var im   = JS9.GetImage({display: display});
 
 	if ( im ) {
 	    var form = $(div).find(".binning-form")[0];
@@ -162,7 +162,7 @@
 	var display = this.display;
 	var win = this.winHandle;
 	var disclose = "";
-	var im  = JS9.GetImage(this.display);
+	var im  = JS9.GetImage({display: this.display});
 
 	if( !im || (im && (!im.raw.hdu || !im.raw.hdu.table)) ){
 	    div.innerHTML = '<p><center>Binning is available for FITS binary tables.</center>';
