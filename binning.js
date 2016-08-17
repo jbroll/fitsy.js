@@ -8,8 +8,6 @@
 
     function reBinImage(div, display) {
 
-    JS9.debug = 2;
-
 	var i, j;
 	var im   = JS9.GetImage({display: display});
 	var form = $(div).find(".binning-form")[0];
