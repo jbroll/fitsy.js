@@ -9,7 +9,21 @@
 	var hdu, options;
 	var im   = JS9.GetImage({display: display});
 	var form = $(div).find(".binning-form")[0];
-
+	var rebin = function(im, hdu, display){
+	    var ss;
+	    var topts = {display: display};
+	    if( form.separate.checked ){
+		// replace old extensions with new
+		if( form.filter.value ){
+		    ss = '[' + form.filter.value + ']';
+		    topts.id = im.id.replace(/(\[.*[a-zA-Z0-9_].*\])\[.*\]/, "$1") + ss;
+		    topts.file = topts.id;
+		}
+		JS9.checkNew(new JS9.Image(hdu, topts));
+	    } else {
+		JS9.RefreshImage(hdu, topts);
+	    }
+	};
 	if ( !im ) { return; }
 
 	options = $.extend(true, {}, JS9.fits.options,
@@ -26,12 +40,12 @@
 	    switch(JS9.fitsLibrary()){
 	    case "fitsy":
 		Fitsy.readTableHDUData(hdu.fits, hdu, options, function(hdu){
-	            JS9.RefreshImage(hdu, {display: display});
+		    rebin(im, hdu, display);
 		});
 		break;
 	    case "cfitsio":
 		JS9.fits.getFITSImage(hdu.fits, hdu, options, function(hdu){
-		    JS9.RefreshImage(hdu, {display: display});
+		    rebin(im, hdu, display);
 		});
 		break;
 	    }
@@ -61,7 +75,6 @@
 		     form.ny.value = im.raw.hdu.table.ny;
 		     form.filter.value = im.raw.hdu.table.filter || "";
 
-
 		     form.cx.disabled = false;
 		     form.cy.disabled = false;
 		     form.nx.disabled = false;
@@ -88,6 +101,7 @@
     }
 
     function binningInit() {
+	var that = this;
 	var div = this.div;
 	var display = this.display;
 	var win = this.winHandle;
@@ -104,24 +118,34 @@
 	}
 
 	/*eslint-disable no-multi-str */
-	$(div).html('<form class="binning-form" style="margin: 5px">					\
-	    <table><tr>	<td>Bin&nbsp;Factor</td>							\
+	$(div).html('<form class="binning-form" style="margin: 10px">					\
+	    <table><tr>	<td>bin&nbsp;factor</td>							\
 			<td><input type=text name=bin value=1 size=10 style="text-align:right;"></td>	\
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
 		   </tr>										\
-	           <tr>	<td>Center</td>									\
+	           <tr>	<td>center</td>									\
 			<td><input type=text name=cx size=10 style="text-align:right;"></td>		\
 			<td><input type=text name=cy size=10 style="text-align:right;"></td>    	\
 			<td>&nbsp;</td>									\
 		   </tr>										\
-	           <tr>	<td>Image&nbsp;Size</td>							\
+	           <tr>	<td>image&nbsp;size</td>							\
 			<td><input type=text name=nx size=10 style="text-align:right;"></td>		\
 			<td><input type=text name=ny size=10 style="text-align:right;"></td>		\
 			<td>&nbsp;</td>									\
 		   </tr>										\
-	           <tr>	<td>Filter</td>									\
-			<td colspan="2"><input type=text name=filter size="24" style="text-align:left;"></td>	\
+	           <tr>	<td>event filter</td>									\
+			<td colspan="2"><input type=text name=filter size="30" style="text-align:left;"></td>	\
+			<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+		   </tr>										\
+	           <tr>	<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+			<td>&nbsp;</td>									\
+		   </tr>										\
+	           <tr>	<td colspan="2">display as a separate image?</td>				\
+			<td><input type=checkbox name=separate class="sep-image" style="text-align:left;"></td>	\
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
 		   </tr>										\
@@ -140,12 +164,15 @@
 	    </form>');
 	/*eslint-enable no-multi-str */
 
-// 	click doesn't work on localhost on a Mac using Chrome/Safari, but mouseup does!
-//	$(div).find(".rebin-image").on("click", function () { reBinImage(div, display); });
-//	$(div).find(".close-image").on("click", function () { if( win ){ win.close(); } });
+	// click doesn't work on localhost on a Mac using Chrome/Safari, but mouseup does ...
 	$(div).find(".rebin-image").on("mouseup", function () { reBinImage(div, display); });
 	$(div).find(".close-image").on("mouseup", function () { if( win ){ win.close(); } });
+	$(div).find(".sep-image").change(function() { that.sep = $(this).prop("checked"); });
 
+	// set separate button
+	$(div).find(".sep-image").prop("checked", !!that.sep);
+
+	// get current params
 	if ( im ) {
 	    getBinParams(div, display);
 	}
@@ -157,7 +184,7 @@
             winTitle: "FITS Binary Table Binning",
 	    winResize: true,
 
-            menuItem: "Binning",
+            menuItem: "Binning/Filtering",
 
 	    onplugindisplay:  binningInit,
 	    onimageload:      binningInit,
@@ -165,6 +192,6 @@
 
 	    help:     "fitsy/binning.html",
 
-            winDims: [400, 180]
+            winDims: [400, 205]
     });
 }());
