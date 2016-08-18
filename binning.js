@@ -11,13 +11,19 @@
 	var form = $(div).find(".binning-form")[0];
 	var rebin = function(im, hdu, display){
 	    var ss;
+	    var rexp = /(\[.*[a-zA-Z0-9_].*\])\[.*\]/;
 	    var topts = {display: display};
 	    if( form.separate.checked ){
 		// replace old extensions with new
+		// would be better to combine them, but ...
 		if( form.filter.value ){
-		    ss = '[' + form.filter.value + ']';
-		    topts.id = im.id.replace(/(\[.*[a-zA-Z0-9_].*\])\[.*\]/, "$1") + ss;
-		    topts.file = topts.id;
+		    ss = '[' + form.filter.value.replace(/\s+/g,"") + ']';
+		    topts.id = im.id.replace(rexp, "$1") + ss;
+		    if( im.fitsFile ){
+			topts.file = im.fitsFile.replace(rexp, "$1") + ss;
+		    } else {
+			topts.file = topts.id;
+		    }
 		}
 		JS9.checkNew(new JS9.Image(hdu, topts));
 	    } else {
@@ -119,23 +125,23 @@
 
 	/*eslint-disable no-multi-str */
 	$(div).html('<form class="binning-form" style="margin: 10px">					\
-	    <table><tr>	<td>bin&nbsp;factor</td>							\
+	    <table><tr>	<td>Bin&nbsp;factor:</td>							\
 			<td><input type=text name=bin value=1 size=10 style="text-align:right;"></td>	\
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
 		   </tr>										\
-	           <tr>	<td>center</td>									\
+	           <tr>	<td>Image&nbsp;center:</td>									\
 			<td><input type=text name=cx size=10 style="text-align:right;"></td>		\
 			<td><input type=text name=cy size=10 style="text-align:right;"></td>    	\
 			<td>&nbsp;</td>									\
 		   </tr>										\
-	           <tr>	<td>image&nbsp;size</td>							\
+	           <tr>	<td>Image&nbsp;size:</td>							\
 			<td><input type=text name=nx size=10 style="text-align:right;"></td>		\
 			<td><input type=text name=ny size=10 style="text-align:right;"></td>		\
 			<td>&nbsp;</td>									\
 		   </tr>										\
-	           <tr>	<td>event filter</td>									\
-			<td colspan="2"><input type=text name=filter size="30" style="text-align:left;"></td>	\
+	           <tr>	<td>Event filter:</td>									\
+			<td colspan="2"><input type=text name=filter size="36" style="text-align:left;"></td>	\
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
 		   </tr>										\
@@ -144,7 +150,7 @@
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
 		   </tr>										\
-	           <tr>	<td colspan="2">display as a separate image?</td>				\
+	           <tr>	<td colspan="2">Display as a separate image?</td>				\
 			<td><input type=checkbox name=separate class="sep-image" style="text-align:left;"></td>	\
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
@@ -155,7 +161,7 @@
 			<td>&nbsp;</td>									\
 		   </tr>										\
 		   <tr>											\
-		       	<td><input type=button name=rebin value="Rebin" class="rebin-image"></td>	\
+			<td><input type=button name=rebin value="Run" class="rebin-image"></td>	\
 			<td>&nbsp;</td>									\
 			<td>&nbsp;</td>									\
 		       	<td><input type=button name=close value="Close" class="close-image" ' + disclose + '></td>	\
@@ -181,7 +187,7 @@
     JS9.RegisterPlugin("Fits", "Binning", binningInit, {
 	    menu: "view",
 
-            winTitle: "FITS Binary Table Binning",
+            winTitle: "FITS Binary Table Binning/Filtering",
 	    winResize: true,
 
             menuItem: "Binning/Filtering",
@@ -192,6 +198,6 @@
 
 	    help:     "fitsy/binning.html",
 
-            winDims: [400, 205]
+            winDims: [400, 210]
     });
 }());
