@@ -99,9 +99,28 @@
 	}
     }
 
+    function centerBinImage(xdim, ydim, div, display) {
+	var im   = JS9.GetImage({display: display});
+	var form = $(div).find(".binning-form")[0];
+	var fdims = im.fileDimensions();
+	form.xcen.value = 0;
+	form.ycen.value = 0;
+	if( xdim > 0 ){
+	    form.xdim.value = xdim;
+	} else {
+	    form.xdim.value = fdims.xdim;
+	}
+	if( ydim > 0 ){
+	    form.ydim.value = ydim;
+	} else {
+	    form.ydim.value = fdims.ydim;
+	}
+	reBinImage(div, display);
+    }
+
     function getBinParams(div, display) {
 	var im, ipos, lpos, form, hdu, bin;
-	var dval1 = 1;
+	var binval1, binval2;
 	if ( display === undefined ) {
 	    div     = this.div;
 	    display = this.display;
@@ -130,15 +149,20 @@
 		    form.ydim.disabled = false;
 		    form.filter.disabled = false;
 		} else {
-		    // incorporate ltm value in bin, if necessary
-		    if( im.parentFile && im.raw.header ){
-			dval1 = im.raw.header.LTM1_1 || 1;
+		    // hack: looking for binning value ...
+		    if( im.parentFile && im.raw.header && 
+			im.raw.header.LTM1_1 !== undefined ){
+			binval1 = 1;
+			binval2 = im.raw.header.LTM1_1;
+		    } else {
+			binval1 = hdu.bin || 1;
+			binval2 = 1;
 		    }
 		    ipos = {x: im.raw.width / 2, y: im.raw.height / 2};
 		    lpos = im.imageToLogicalPos(ipos);
 		    form.xcen.value = String(Math.floor(lpos.x));
 		    form.ycen.value = String(Math.floor(lpos.y));
-		    bin = Math.floor(((hdu.bin || 1) / dval1) + 0.5);
+		    bin = Math.floor((binval1 / binval2) + 0.5);
 		    form.bin.value = String(bin);
 		    form.xdim.value = String(Math.floor(hdu.naxis1 * bin));
 		    form.ydim.value = String(Math.floor(hdu.naxis2 * bin));
@@ -176,21 +200,26 @@
 
 	/*eslint-disable no-multi-str */
 	$(div).html('<form class="binning-form" style="margin: 0px; padding: 8px; width: 100%; height: 100%">	\
-	    <table style="margin:0px; cellspacing:0; border-collapse:separate; border-spacing:4px 10px;"> \
+	    <table style="margin:0px; cellspacing:0; border-collapse:separate; border-spacing:4px 10px;">       \
+	           <tr>	<td><input type=button class=full-image value="Load full image" style="text-align:right;"></td>	\
+			<td>&nbsp;</td>    								\
+			<td>&nbsp;</td>								    	\
+			<td>&nbsp;</td> 								\
+		   </tr>										        \
 	           <tr>	<td><b>center:</b></td>								\
 			<td><input type=text name=xcen size=10 style="text-align:right;"></td>		\
 			<td><input type=text name=ycen size=10 style="text-align:right;"></td>    	\
-			<td>&nbsp(file coords of center of section)</td>						\
+			<td>&nbsp(center position of section)</td>						\
 		   </tr>										\
 	           <tr>	<td><b>size:</b></td>								\
 			<td><input type=text name=xdim size=10 style="text-align:right;"></td>		\
 			<td><input type=text name=ydim size=10 style="text-align:right;"></td>		\
-			<td>&nbsp(pixel width, height of section)</td>						\
+			<td>&nbsp(width, height of section)</td>						\
 		   </tr>										\
                    <tr>	<td><b>bin:</b></td>							\
 			<td><input type=text name=bin value=1 size=10 style="text-align:right;"></td>	\
 			<td></td>									\
-			<td>&nbsp(bin factor applied to section)</td>						\
+			<td>&nbsp(apply bin factor to section)</td>						\
 		   </tr>										\
 	           <tr>	<td><b>filter:</b></td>								\
 			<td colspan="2"><input type=text name=filter size="22" style="text-align:left;"></td>	\
@@ -199,7 +228,7 @@
 	           <tr>	<td><b>separate:</b></td>			\
                         <td><input type=checkbox name=separate class="sep-image" style="text-align:left;"></td>	\
 			<td></td>									\
-			<td>&nbsp(display as a separate image?)</td>						\
+			<td>&nbsp(display as separate image?)</td>						\
 		   </tr>										\
 		   <tr>											\
 			<td><input type=button name=rebin value="Run" class="rebin-image"></td>         \
@@ -212,6 +241,7 @@
 	/*eslint-enable no-multi-str */
 
 	// click doesn't work on localhost on a Mac using Chrome/Safari, but mouseup does ...
+	$(div).find(".full-image").on("mouseup", function ()  { centerBinImage(0, 0, div, display); });
 	$(div).find(".rebin-image").on("mouseup", function () { reBinImage(div, display); });
 	$(div).find(".close-image").on("mouseup", function () { if( win ){ win.close(); } });
 	$(div).find(".sep-image").change(function() { that.sep = $(this).prop("checked"); });
@@ -239,6 +269,6 @@
 
 	    help:     "fitsy/binning.html",
 
-            winDims: [480, 240]
+            winDims: [520, 250]
     });
 }());
