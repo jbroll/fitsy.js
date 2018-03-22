@@ -5,27 +5,6 @@
 
 (function() {
 
-    /* maybePhysicalToImage: it's a hack!
-       The physical position defined by LTM/LTV is not always the file position,
-       For example, if the file foo.fits was created from another file:
-           funimage somefile.fits'[*,*,2]' foo.fits
-       its LTM/LTV keywords will referring to the parent, instead of itself.
-       In such a case, we want to convert physical position to image position
-       of the physical file.
-       This situation is signalled by the presence of a parent lcs object.
-    */
-    function maybePhysicalToImage(im, pos){
-	var lpos, ipos, npos;
-	if( im.imtab === "image" && im.parent && im.parent.lcs &&
-	    pos.x && pos.y ){
-	    lpos = {x: pos.x, y: pos.y};
-	    ipos = JS9.Image.prototype.logicalToImagePos.call(im.parent, lpos,
-							      "ophysical");
-	    npos = {x: Math.floor(ipos.x+0.5), y: Math.floor(ipos.y+0.5)};
-	}
-	return npos;
-    }
-
     function reBinImage(div, display) {
 	var hdu, opts, npos;
 	var im   = JS9.GetImage({display: display});
@@ -78,7 +57,7 @@
 	    if( JS9.isNumber(form.ycen.value) ){
 		opts.ycen = parseFloat(form.ycen.value);
 	    }
-	    npos = maybePhysicalToImage(im, {x: opts.xcen, y: opts.ycen});
+	    npos = im.maybePhysicalToImage({x: opts.xcen, y: opts.ycen});
 	    if( npos ){
 		opts.xcen = npos.x;
 		opts.ycen = npos.y;
@@ -158,11 +137,15 @@
 			binval1 = hdu.bin || 1;
 			binval2 = 1;
 		    }
-		    ipos = {x: im.raw.width / 2, y: im.raw.height / 2};
-		    lpos = im.imageToLogicalPos(ipos);
-		    form.xcen.value = String(Math.floor(lpos.x));
-		    form.ycen.value = String(Math.floor(lpos.y));
 		    bin = Math.floor((binval1 / binval2) + 0.5);
+		    // get image center from raw data
+		    ipos = {x: im.raw.width / 2, y: im.raw.height / 2};
+		    // convert to physial (file) coords
+		    lpos = im.imageToLogicalPos(ipos);
+//		    form.xcen.value = String(Math.floor(lpos.x + 0.5));
+//		    form.ycen.value = String(Math.floor(lpos.y + 0.5));
+		    form.xcen.value = String(Math.floor(lpos.x + 0.5*(bin-1)));
+		    form.ycen.value = String(Math.floor(lpos.y + 0.5*(bin-1)));
 		    form.bin.value = String(bin);
 		    form.xdim.value = String(Math.floor(hdu.naxis1 * bin));
 		    form.ydim.value = String(Math.floor(hdu.naxis2 * bin));
